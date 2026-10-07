@@ -507,8 +507,8 @@ public class SftpRegressionTest {
 			f.createFileSource(DIR).exists();
 			List<String> nonDaemon = new ArrayList<>();
 			for (Thread t : Thread.getAllStackTraces().keySet()) {
-				// The JDK's AWT-Shutdown thread comes and goes after the Swing panel test
-				// (SftpPropertyEditPanelTest); it isn't an SSH library's thread
+				// The JDK's AWT-Shutdown thread can come and go if anything in the run used AWT;
+				// it isn't an SSH library's thread
 				if( !before.contains(t) && t.isAlive() && !t.isDaemon() && !t.getName().startsWith("AWT-")) {
 					nonDaemon.add(t.getName());
 				}

@@ -25,7 +25,6 @@
  */
 package us.bringardner.parley.files.sftp;
 
-import java.awt.Component;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -44,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 
+import us.bringardner.parley.files.ConnectionSetting;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.FileSourceUser;
@@ -78,6 +78,15 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	public static final String PROP_PRIVATE_KEY_FILE_NAME = "identityFile";
 	public static final String PROP_PRIVATE_KEY = "privateKey";
 	public static final String PROP_PASSWORD = "password";
+	/**
+	 * How to log in: {@link #AUTH_PASSWORD}, {@link #AUTH_KEY_FILE} or {@link #AUTH_KEY}. It
+	 * decides which of password, identityFile and privateKey a form asks for. Reading it is
+	 * optional: when it's missing it's worked out from which of those are set.
+	 */
+	public static final String PROP_AUTH = "auth";
+	public static final String AUTH_PASSWORD = "Password";
+	public static final String AUTH_KEY_FILE = "Private Key File";
+	public static final String AUTH_KEY = "Private Key";
 	/** Path of a known_hosts file used to check the server's host key. */
 	public static final String PROP_KNOWN_HOSTS = "knownHosts";
 	/**
@@ -867,10 +876,46 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		}
 	}
 
-	@Override
-	public Component getEditPropertiesComponent() {
+	/** How this factory logs in, from the credentials it has: a pasted key, else a key file, else a password. */
+	public String getAuth() {
+		return privateKey != null ? AUTH_KEY : privateKeyFileName != null ? AUTH_KEY_FILE : AUTH_PASSWORD;
+	}
 
-		return new SftpPropertyEditPanel();
+	@Override
+	public List<ConnectionSetting> getConnectionSettings() {
+		return List.of(
+				ConnectionSetting.text(PROP_HOST, "Host").asRequired(),
+				ConnectionSetting.integer(PROP_PORT, "Port", 1L, 65535L).withDefault(""+DEFAULT_PORT).asRequired(),
+				ConnectionSetting.text(PROP_USER, "User").asRequired(),
+				ConnectionSetting.choice(PROP_AUTH, "Log in with", AUTH_PASSWORD, AUTH_KEY_FILE, AUTH_KEY),
+				ConnectionSetting.secret(PROP_PASSWORD, "Password").visibleWhen(PROP_AUTH, AUTH_PASSWORD),
+				ConnectionSetting.localFile(PROP_PRIVATE_KEY_FILE_NAME, "Private key file").asRequired()
+					.withDescription("An OpenSSH or PEM private key file").visibleWhen(PROP_AUTH, AUTH_KEY_FILE),
+				ConnectionSetting.multilineSecret(PROP_PRIVATE_KEY, "Private key").asRequired()
+					.withDescription("Paste a private key here, in PEM or OpenSSH format").visibleWhen(PROP_AUTH, AUTH_KEY),
+				ConnectionSetting.integer(PROP_ATTRIBUTE_CACHE_TTL, "Cache file details for (ms)", -1L, null)
+					.withDefault(""+defaultAttributeCacheTtl())
+					.withDescription("0 = always ask the server, -1 = until refresh"),
+				ConnectionSetting.localFile(PROP_KNOWN_HOSTS, "Known hosts file").asAdvanced()
+					.withDescription("Server keys to trust; empty for ~/.ssh/known_hosts"),
+				ConnectionSetting.choice(PROP_STRICT_HOST_KEY_CHECKING, "Check the server's key", "yes", "no").asAdvanced()
+					.withDefault(DEFAULT_STRICT_HOST_KEY_CHECKING)
+					.withDescription("no accepts any server, which lets one be impersonated"),
+				ConnectionSetting.integer(PROP_CONNECT_TIMEOUT, "Connect timeout (ms)", 0L, null).asAdvanced()
+					.withDefault(""+DEFAULT_CONNECT_TIMEOUT),
+				ConnectionSetting.integer(PROP_SERVER_ALIVE_INTERVAL, "Keep-alive interval (ms)", 0L, null).asAdvanced()
+					.withDefault(""+DEFAULT_SERVER_ALIVE_INTERVAL),
+				ConnectionSetting.choice(PROP_IMPLEMENTATION, "SSH library", "", SshProviders.JSCH, SshProviders.MINA, SshProviders.PARLEY)
+					.asAdvanced().withDefault("")
+					.withDescription("Empty: the system property parley.sftp.implementation, else "+SshProviders.JSCH),
+				ConnectionSetting.integer(PROP_MAX_CHANNELS, "Most channels at once", 1L, null).asAdvanced()
+					.withDefault(""+DEFAULT_MAX_CHANNELS)
+					.withDescription("Servers limit these: OpenSSH allows 10 per connection"),
+				ConnectionSetting.integer(PROP_CHANNEL_WAIT_TIMEOUT, "Wait for a channel (ms)", 0L, null).asAdvanced()
+					.withDefault(""+DEFAULT_CHANNEL_WAIT_TIMEOUT),
+				ConnectionSetting.bool(PROP_SAFE_OVERWRITE, "Write through a temporary file").asAdvanced()
+					.withDescription("A failed write then leaves the old file as it was"),
+				ConnectionSetting.hidden(PROP_SESSION_KEY));
 	}
 
 	@Override
@@ -951,6 +996,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.setProperty(PROP_PORT, port <=0 ? ""+DEFAULT_PORT:""+port);
 		ret.setProperty(PROP_PRIVATE_KEY_FILE_NAME, privateKeyFileName == null ? "":privateKeyFileName);
 		ret.setProperty(PROP_PRIVATE_KEY, privateKey == null ? "":new String(privateKey));
+		ret.setProperty(PROP_AUTH, getAuth());
 		ret.setProperty(PROP_SESSION_KEY, sessionKey == null ? "":sessionKey);
 		ret.setProperty(PROP_KNOWN_HOSTS, knownHosts == null ? "":knownHosts);
 		ret.setProperty(PROP_STRICT_HOST_KEY_CHECKING, strictHostKeyChecking);

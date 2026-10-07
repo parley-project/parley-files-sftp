@@ -38,12 +38,12 @@ import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.ProgressMonitor;
 
 import us.bringardner.parley.core.BaseObject;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.FileSourceFilter;
+import us.bringardner.parley.files.FileSourceProgress;
 import us.bringardner.parley.files.FileSourceGroup;
 import us.bringardner.parley.files.FileSourceRandomAccessStream;
 import us.bringardner.parley.files.IRandomAccessStream;
@@ -361,7 +361,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	 *
 	 * @return the children, or null if this is a file or doesn't exist
 	 */
-	private SftpFileSource[] getKids(ProgressMonitor monitor) throws IOException {
+	private SftpFileSource[] getKids(FileSourceProgress monitor) throws IOException {
 		if( monitor != null) monitor.setProgress(0);
 		SftpFileSource[] ret = null;
 		if( !isFile() ) {
@@ -1147,7 +1147,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	}
 
 	@Override
-	public FileSource[] listFiles(ProgressMonitor progress) throws IOException {
+	public FileSource[] listFiles(FileSourceProgress progress) throws IOException {
 		return getKids(progress);
 	}
 
