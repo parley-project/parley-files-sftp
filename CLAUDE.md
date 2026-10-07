@@ -1,10 +1,14 @@
-# BjlFileSystemSftp
+# parley-files-sftp
 
-The SSH/SFTP implementation of the `FileSource` interface from BjlFileSystem
-(Bringardner Java Library). Owner: Tony Bringardner. Java 11, Maven, JUnit 5
+(Renamed from BjlFileSystemSftp when the Bringardner Java Library became Parley. The batch history
+below keeps the old names: `bjl` is now `parley`, `bjl.sftp.*` is now `parley.sftp.*`, and
+`us.bringardner.io.filesource` is now `us.bringardner.parley.files`.)
+
+The SSH/SFTP implementation of the `FileSource` interface from parley-files
+(Parley, formerly the Bringardner Java Library). Owner: Tony Bringardner. Java 11, Maven, JUnit 5
 (plus JUnit 4's `Assert`). Related repos, all under github.com/tony-bringardner:
-BjlCore (`bjl_core`), BjlIo (`bjl_io`), BjlFileSystem (`bjl_file_system`),
-BjlFileSystemFtp, BjlFileSystemJdbc. They live next to this repo in
+parley-core, parley-io, parley-files,
+parley-files-ftp, parley-files-jdbc. They live next to this repo in
 `/Volumes/Data/eclipse-git/`.
 
 ## How Tony wants work done
@@ -21,8 +25,8 @@ BjlFileSystemFtp, BjlFileSystemJdbc. They live next to this repo in
 ## Building and testing
 
 - `mvn package` runs the whole suite. At batch 22 that was 251 tests; at
-  batch 23, 366 (the library-parameterized tests run with bjl too).
-- `TestServer` picks the server once per run, by `-Dbjl.sftp.test.server`:
+  batch 23, 366 (the library-parameterized tests run with parley too).
+- `TestServer` picks the server once per run, by `-Dparley.sftp.test.server`:
   - `auto` (the default) uses OpenSSH on **localhost:22** if `unittest1` /
     `0000` can log in, otherwise the embedded server.
   - `local` always uses localhost:22.
@@ -45,11 +49,11 @@ BjlFileSystemFtp, BjlFileSystemJdbc. They live next to this repo in
   property; before batch 19 that property was silently ignored.
 - `TestSftpRandomAccessIoController` (port 2222) and `SftpCanonicalPathTest`
   (port 2224) start their own embedded servers.
-- Pick the SSH library for a run with `-Dbjl.sftp.implementation=jsch` (the
-  default), `=mina` or `=bjl`. Most new tests are parameterized to run with
+- Pick the SSH library for a run with `-Dparley.sftp.implementation=jsch` (the
+  default), `=mina` or `=parley`. Most new tests are parameterized to run with
   all three.
 - The core libraries are SNAPSHOT versions. If a build can't find them, run
-  `mvn install` in BjlCore, BjlIo and BjlFileSystem first.
+  `mvn install` in parley-parent, parley-core, parley-io and parley-files first.
 
 ## How the code is laid out
 
@@ -89,8 +93,8 @@ BjlFileSystemFtp, BjlFileSystemJdbc. They live next to this repo in
   - `client/jsch/` uses the maintained JSch fork, `com.github.mwiede:jsch`.
   - `client/mina/` uses Apache MINA SSHD, `sshd-sftp`. MINA also needs
     `net.i2p.crypto:eddsa` for Ed25519 keys and known_hosts entries.
-  - `client/bjl/` uses BJL's own SSH library, `us.bringardner:bjl_net_ssh`
-    (the BjlSsh repo). It needs `mvn install` in BjlSsh (and BjlNetFramework)
+  - `client/parley/` uses Parley's own SSH library, `us.bringardner.parley:parley-ssh`
+    (the parley-ssh repo). It needs `mvn install` in parley-ssh (and parley-net)
     first while they're SNAPSHOTs.
   - Code outside `client/` must not use any of the libraries directly.
 - Errors: a missing file is `NoSuchFileException`, a refused permission is
@@ -100,7 +104,7 @@ BjlFileSystemFtp, BjlFileSystemJdbc. They live next to this repo in
 ## History
 
 The full review is in the claude.ai project "FileSystem", in
-`claude/BjlFileSystemSftp-review.md`.
+`claude/parley-files-sftp-review.md`.
 
 - **Batches 1–10 are merged.** They fixed data-safety bugs, connections and
   sessions, and thread safety. They added the JSch/MINA interface, random
@@ -139,7 +143,7 @@ The full review is in the claude.ai project "FileSystem", in
   keepalives don't help when the server is alive but doesn't answer. Use
   `-Dsurefire.timeout=540` so a hang fails the run instead of stalling it.
 - **Deferred:** CI. Tony isn't ready for it. A workflow would have to build
-  BjlCore, BjlIo and BjlFileSystem first, because they're unpublished
+  parley-parent, parley-core, parley-io and parley-files first, because they're unpublished
   SNAPSHOTs. `TestSftpRandomAccessIoController` and `SftpCanonicalPathTest`
   use fixed ports (2222, 2224), which could clash on a shared CI machine.
 

@@ -1,0 +1,62 @@
+package us.bringardner.parley.files.sftp.client.jsch;
+
+import java.io.IOException;
+import java.util.Properties;
+
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+
+import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.sftp.client.SshProvider;
+import us.bringardner.parley.files.sftp.client.SshProviders;
+import us.bringardner.parley.files.sftp.client.SshSettings;
+
+/** SSH through JSch (the maintained com.github.mwiede fork, or the original 0.1.55). */
+public class JschProvider implements SshProvider {
+
+	@Override
+	public String getName() {
+		return SshProviders.JSCH;
+	}
+
+	@Override
+	public SshConnection connect(SshSettings s) throws IOException {
+		try {
+			// A new JSch per connection, so identities don't pile up across connects
+			JSch jsch = new JSch();
+			if( s.strictHostKeyChecking ) {
+				jsch.setKnownHosts(SshProviders.knownHostsFile(s));
+			}
+			if( s.privateKey != null ) {
+				jsch.addIdentity(null, s.privateKey, null, null);
+			} else if( s.privateKeyFile != null && !s.privateKeyFile.isEmpty()) {
+				jsch.addIdentity(s.privateKeyFile);
+			}
+
+			Session session = jsch.getSession(s.user, s.host, s.port);
+			Properties config = new Properties();
+			config.put("StrictHostKeyChecking", s.strictHostKeyChecking ? "yes" : "no");
+			session.setConfig(config);
+			if( s.password != null ) {
+				session.setPassword(s.password);
+			}
+			if( s.serverAliveIntervalMs > 0 ) {
+				session.setServerAliveInterval(s.serverAliveIntervalMs);
+			}
+			// JSch's connection thread isn't a daemon by default, so a program that
+			// forgot disConnect() never exited. MINA's threads already are.
+			session.setDaemonThread(true);
+			session.connect(s.connectTimeoutMs);
+			return new JschConnection(session, s.connectTimeoutMs);
+		} catch (JSchException e) {
+			String m = e.getMessage();
+			// by message, so the original JSch 0.1.55 is covered too (it has no exception types for these)
+			if( s.strictHostKeyChecking && m != null
+					&& (m.startsWith("reject HostKey") || m.startsWith("UnknownHostKey") || m.startsWith("HostKey has been changed"))) {
+				throw SshProviders.hostKeyRejected(s, m, e);
+			}
+			throw new IOException(m, e);
+		}
+	}
+}
