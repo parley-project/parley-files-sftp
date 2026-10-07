@@ -17,6 +17,11 @@ part of the Parley library family.
 - Module name (`Automatic-Module-Name`): `us.bringardner.parley.files.sftp`.
 - Dependencies: `bjl_net_ssh`, `bjl_core`, `bjl_io` and `bjl_file_system` are now `parley-ssh`,
   `parley-core`, `parley-io` and `parley-files`.
+- `SftpPropertyEditPanel` is gone: the factory describes its settings with `getConnectionSettings()`
+  (see parley-files), and the module no longer uses Swing. The new `auth` property ("Password",
+  "Private Key File" or "Private Key") says which credential a form asks for; it's optional when
+  connecting (worked out from the credentials set) and `getConnectProperties()` includes it.
+- `listFiles(ProgressMonitor)` is now `listFiles(FileSourceProgress)`.
 
 ### Changed (no code change needed)
 
