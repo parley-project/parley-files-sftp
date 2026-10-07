@@ -1,4 +1,18 @@
-# BjlFileSystemSftp
+# parley-files-sftp
+
+> parley-files-sftp is part of **Parley**, a family of Java libraries for implementing internet protocols.
+> It was previously `us.bringardner:bjl_file_system_sftp` (BjlFileSystemSftp), with packages under
+> `us.bringardner.io.filesource.sftp`; they are now `us.bringardner.parley.files.sftp`. The SSH library
+> named `bjl` is now `parley`, and the `bjl.sftp.*` system properties are now `parley.sftp.*`; the old
+> names still work.
+
+```xml
+<dependency>
+    <groupId>us.bringardner.parley</groupId>
+    <artifactId>parley-files-sftp</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
  SSH/SFTP implementation of the FileSource interface
 
 ## Choosing the SSH library
@@ -9,7 +23,7 @@ Three SSH libraries are included, and which one is used is decided at run time:
 |---|---|
 | `jsch` (default) | [JSch, maintained fork](https://github.com/mwiede/jsch) (`com.github.mwiede:jsch`) |
 | `mina` | [Apache MINA SSHD](https://mina.apache.org/sshd-project/) |
-| `bjl` | [BjlSsh](https://github.com/tony-bringardner/BjlSsh) (`us.bringardner:bjl_net_ssh`), BJL's own SSH library: no third party code |
+| `parley` | [parley-ssh](https://github.com/tony-bringardner/parley-ssh) (`us.bringardner.parley:parley-ssh`), Parley's own SSH library: no third party code |
 
 Set it per factory with the `implementation` connection property:
 
@@ -19,14 +33,14 @@ Properties p = factory.getConnectProperties();
 p.setProperty("host", "example.com");
 p.setProperty("user", "me");
 p.setProperty("password", "secret");
-p.setProperty("implementation", "mina");   // or "jsch", "bjl"
+p.setProperty("implementation", "mina");   // or "jsch", "parley"
 factory.setConnectionProperties(p);
 ```
 
 or for the whole JVM with a system property:
 
 ```
-java -Dbjl.sftp.implementation=mina ...   (or jsch, bjl)
+java -Dparley.sftp.implementation=mina ...   (or jsch, parley)
 ```
 
 A factory's own setting wins over the system property. All three behave the same through `FileSource`. With MINA and BJL, random access reads and writes at any position in one request each. JSch has no safe way to write at a position, so random access that can write (`rw`, `rws`, `rwd`) goes through a MINA connection to the same account even when JSch is chosen; reading stays on JSch.
@@ -59,4 +73,4 @@ A file's own details (whether it exists, its size, times, type and owner) are ca
 
 Changes made through the same `FileSource` object (writing, deleting, renaming, changing permissions) are always seen at once, whatever the setting.
 
-Set it per factory with `setAttributeCacheTtl(millis)` or the `attributeCacheTtl` connection property, or for the whole JVM with `-Dbjl.sftp.attributeCacheTtl=0`. A factory's own setting wins; changing it applies at once, to files already created too.
+Set it per factory with `setAttributeCacheTtl(millis)` or the `attributeCacheTtl` connection property, or for the whole JVM with `-Dparley.sftp.attributeCacheTtl=0`. A factory's own setting wins; changing it applies at once, to files already created too.
