@@ -1,7 +1,6 @@
 package us.bringardner.parley.files.sftp.client.parley;
 
-import java.io.FilterInputStream;
-import java.io.FilterOutputStream;
+import us.bringardner.parley.files.sftp.client.AbstractSftpChannel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -21,7 +20,7 @@ import us.bringardner.parley.ssh.sftp.SftpDirEntry;
 import us.bringardner.parley.ssh.sftp.SftpException;
 import us.bringardner.parley.ssh.sftp.SftpHandle;
 
-class ParleySftpChannel implements SftpChannel {
+class ParleySftpChannel extends AbstractSftpChannel {
 
 	/** How long close() waits for the server to confirm the channel is closed. */
 	static final long CLOSE_WAIT_MS = 10_000;
@@ -132,13 +131,7 @@ class ParleySftpChannel implements SftpChannel {
 			call(from, () -> { sftp.posixRename(from, to); return null; });
 			return;
 		}
-		try {
-			lstat(to);
-			remove(to);
-		} catch (NoSuchFileException e) {
-			// nothing in the way
-		}
-		rename(from, to);
+		replaceByRemoving(from, to);
 	}
 
 	@Override
@@ -197,76 +190,26 @@ class ParleySftpChannel implements SftpChannel {
 	/** Pipelined: several read requests in flight. */
 	@Override
 	public InputStream read(String path, long offset) throws IOException {
-		InputStream in = call(path, () -> sftp.read(path, offset));
-		return new FilterInputStream(in) {
-			@Override
-			public int read() throws IOException {
-				return call(path, () -> in.read());
-			}
-
-			@Override
-			public int read(byte[] b, int off, int len) throws IOException {
-				return call(path, () -> in.read(b, off, len));
-			}
-
-			@Override
-			public long skip(long n) throws IOException {
-				return call(path, () -> in.skip(n));
-			}
-
-			@Override
-			public void close() throws IOException {
-				call(path, () -> { in.close(); return null; });
-			}
-		};
+		return guardedInput(path, call(path, () -> sftp.read(path, offset)));
 	}
 
 	/** Pipelined: several write requests in flight; errors come from a later write or close(). */
 	@Override
 	public OutputStream write(String path, boolean append) throws IOException {
-		OutputStream out = call(path, () -> sftp.write(path, append));
-		return new FilterOutputStream(out) {
-			@Override
-			public void write(int b) throws IOException {
-				call(path, () -> { out.write(b); return null; });
-			}
-
-			@Override
-			public void write(byte[] b, int off, int len) throws IOException {
-				call(path, () -> { out.write(b, off, len); return null; });
-			}
-
-			@Override
-			public void flush() throws IOException {
-				call(path, () -> { out.flush(); return null; });
-			}
-
-			@Override
-			public void close() throws IOException {
-				call(path, () -> { out.close(); return null; });
-			}
-		};
+		return guardedOutput(path, call(path, () -> sftp.write(path, append)));
 	}
 
-	/** One exclusive open (SSH_FXF_EXCL), so the check and the create can't be split by another program. */
 	@Override
-	public boolean createNew(String path) throws IOException {
-		try {
-			call(path, () -> {
-				sftp.open(path, SftpConstants.SSH_FXF_WRITE | SftpConstants.SSH_FXF_CREAT | SftpConstants.SSH_FXF_EXCL, SftpAttrs.NONE).close();
-				return null;
-			});
-			return true;
-		} catch (IOException e) {
-			// SFTP v3 has no "already exists" status; OpenSSH answers SSH_FX_FAILURE
-			try {
-				lstat(path);
-			} catch (IOException e2) {
-				e.addSuppressed(e2);
-				throw e;
-			}
-			return false;
-		}
+	protected void createExclusive(String path) throws IOException {
+		call(path, () -> {
+			sftp.open(path, SftpConstants.SSH_FXF_WRITE | SftpConstants.SSH_FXF_CREAT | SftpConstants.SSH_FXF_EXCL, SftpAttrs.NONE).close();
+			return null;
+		});
+	}
+
+	@Override
+	protected <T> T guard(String path, IoCall<T> c) throws IOException {
+		return call(path, c::run);
 	}
 
 	@Override
