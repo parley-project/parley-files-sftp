@@ -394,7 +394,10 @@ public class SftpFileSource extends BaseObject implements FileSource {
 					}
 					if( monitor != null) monitor.setProgress((int)((long)cnt*monitor.getMaximum()/ls.size()));
 				}
-			} catch (IOException e) {
+			} catch (IOException | java.io.UncheckedIOException failure) {
+				// the MINA library reports a missing directory as an unchecked exception
+				IOException e = failure instanceof java.io.UncheckedIOException
+						? ((java.io.UncheckedIOException) failure).getCause() : (IOException) failure;
 				if( isNoSuchFile(e)) {
 					synchronized (this) {
 						attr = null;
@@ -406,11 +409,13 @@ public class SftpFileSource extends BaseObject implements FileSource {
 						startClockIfEmpty();
 						exists = false;
 					}
+					// as java.io.File: a path that isn't there has no list (it was an empty one)
+					list = null;
 				} else {
 					throw e;
 				}
 			}
-			ret = list.toArray(new SftpFileSource[list.size()]);
+			ret = list == null ? null : list.toArray(new SftpFileSource[list.size()]);
 		}
 
 		if( monitor != null) monitor.setProgress(monitor.getMaximum());
@@ -694,13 +699,37 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			return false;   // like java.io.File: nothing to delete
 		}
 		if( self.isDir() ) {
-			factory.sftp(c -> { c.rmdir(path); return null; });
+			try {
+				factory.sftp(c -> { c.rmdir(path); return null; });
+			} catch (IOException e) {
+				// as java.io.File: a directory that isn't empty can't be deleted, and that is
+				// false, not an exception. Any other failure is still reported.
+				if( hasChildren() ) {
+					return false;
+				}
+				throw e;
+			}
 		} else {
 			factory.sftp(c -> { c.remove(path); return null; });
 		}
 		clearAttr();
 		ret = true;
 		return ret;
+	}
+
+	/** Whether this directory has anything in it (one listing). */
+	private boolean hasChildren() {
+		try {
+			for(SftpEntry e : factory.ls(path)) {
+				String name = e.getFilename();
+				if( !name.equals(".") && !name.equals("..") ) {
+					return true;
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			// can't tell: not known to have children
+		}
+		return false;
 	}
 
 	@Override
@@ -874,6 +903,9 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	@Override
 	public String[] list() throws IOException {
 		FileSource[] list = listFiles();
+		if( list == null ) {
+			return null;   // as java.io.File: not a directory (missing, or a plain file)
+		}
 		String ret [] = new String[list.length];
 		for (int idx = 0; idx < ret.length; idx++) {
 			ret[idx] = list[idx].getName();
@@ -885,6 +917,9 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	@Override
 	public String[] list(FileSourceFilter filter) throws IOException {
 		FileSource [] list = listFiles(filter);
+		if( list == null ) {
+			return null;   // as java.io.File: not a directory (missing, or a plain file)
+		}
 		String ret [] = new String[list.length];
 		for (int idx = 0; idx < ret.length; idx++) {
 			ret[idx] = list[idx].getName();
@@ -902,8 +937,11 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	public synchronized  FileSource[] listFiles(FileSourceFilter filter) throws IOException {
 		List<FileSource> ret = new ArrayList<FileSource>();
 		FileSource[] list = listFiles();
+		if( list == null ) {
+			return null;   // as java.io.File: not a directory (missing, or a plain file)
+		}
 		for (FileSource f : list) {
-			if( filter.accept(f)) {
+			if( filter == null || filter.accept(f)) {
 				ret.add(f);
 			}
 		}
@@ -940,19 +978,31 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	}
 
 	/**
-	 * Makes this directory and any missing parents. True if it's a directory
-	 * at the end, including when it already was; false if a file is in the
-	 * way (it used to say true then). If another program makes one of the
-	 * directories meanwhile, that's success: mkdir used to fail on it with an
-	 * IOException, which a cached exists() made likely for up to the cache time.
+	 * As java.io.File.mkdirs: makes this directory and any missing parents, and is true only if
+	 * it made it. False when there is already a directory, or a file, at the path (it used to be
+	 * true for a directory that was already there). If another program makes one of the
+	 * directories meanwhile, that's success: mkdir used to fail on it with an IOException, which
+	 * a cached exists() made likely for up to the cache time.
 	 */
 	@Override
 	public  synchronized boolean mkdirs() throws IOException {
 		if( exists()) {
+			return false;
+		}
+		return ensureDirectory();
+	}
+
+	/** True if there is a directory at this path afterwards: it was there, or it and its parents were made. */
+	private synchronized boolean ensureDirectory() throws IOException {
+		if( exists()) {
 			return isDirectory();
 		}
 		FileSource p = getParentFile();
-		if( p != null && !p.mkdirs()) {
+		if( p instanceof SftpFileSource ) {
+			if( !((SftpFileSource) p).ensureDirectory() ) {
+				return false;
+			}
+		} else if( p != null && !p.mkdirs() ) {
 			return false;
 		}
 		if( mkdir()) {

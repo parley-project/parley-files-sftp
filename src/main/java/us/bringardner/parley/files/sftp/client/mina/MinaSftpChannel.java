@@ -51,6 +51,14 @@ class MinaSftpChannel extends AbstractSftpChannel {
 			return c.run();
 		} catch (SftpException e) {
 			throw translate(path, e);
+		} catch (java.io.UncheckedIOException u) {
+			// MINA reads a directory lazily and reports a failure of that as an unchecked
+			// exception around the SftpException: translate it like any other
+			IOException cause = u.getCause();
+			if( cause instanceof SftpException ) {
+				throw translate(path, (SftpException) cause);
+			}
+			throw cause;
 		}
 	}
 
