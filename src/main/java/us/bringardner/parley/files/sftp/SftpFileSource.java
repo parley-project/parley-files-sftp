@@ -214,6 +214,10 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		public SftpInputStream(long skipTo, int bufferSize) throws IOException {
 			// Reading changes nothing worth asking the server about again, so the
 			// cached attributes are kept (clearing them cost a stat after every read).
+			if( isDirectory() ) {
+				// a FileInputStream refuses a directory; the server may let us open one
+				throw new FileNotFoundException(path + " (Is a directory)");
+			}
 			mySftp = factory.openSftp();
 			try {
 				InputStream opened = mySftp.read(path, skipTo);
