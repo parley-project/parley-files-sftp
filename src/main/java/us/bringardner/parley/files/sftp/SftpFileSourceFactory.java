@@ -271,7 +271,45 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 * A server that sends less per read is asked again for the rest.
 	 */
 	public static final int DEFAULT_CHUNK_SIZE = 128*1024;
-	private int chunkSize=DEFAULT_CHUNK_SIZE;
+	private int chunkSize=defaultBufferSize();
+	/** True once the size was set (setChunkSize, setBufferSize or PROP_BUFFER_SIZE), not just defaulted. */
+	private boolean chunkSizeExplicit;
+
+	/**
+	 * Connect property for {@link #setBufferSize(int)}, the same value as the chunk size.
+	 * <p>
+	 * This is for programmers: it isn't in {@link #getConnectionSettings()}, so no dialog
+	 * shows it (the forms carry properties they don't describe through unchanged), and
+	 * {@link #getConnectProperties()} only has it when it was set, so saved connections
+	 * keep following the default.
+	 */
+	public static final String PROP_BUFFER_SIZE = "bufferSize";
+	/** System property with the JVM-wide default for PROP_BUFFER_SIZE. */
+	public static final String SYSTEM_PROPERTY_BUFFER_SIZE = "parley.sftp.bufferSize";
+	/** The smallest and largest size {@link #setBufferSize(int)} and PROP_BUFFER_SIZE accept. */
+	public static final int MIN_BUFFER_SIZE = 1024;
+	public static final int MAX_BUFFER_SIZE = 16*1024*1024;
+
+	/**
+	 * The default for new factories: the system property parley.sftp.bufferSize if it
+	 * is a number (kept within MIN_BUFFER_SIZE and MAX_BUFFER_SIZE), otherwise
+	 * DEFAULT_CHUNK_SIZE.
+	 */
+	public static int defaultBufferSize() {
+		String v = System.getProperty(SYSTEM_PROPERTY_BUFFER_SIZE);
+		if( v != null && !v.trim().isEmpty()) {
+			try {
+				return clampBufferSize(Long.parseLong(v.trim()));
+			} catch (NumberFormatException e) {
+				// a bad value uses the default
+			}
+		}
+		return DEFAULT_CHUNK_SIZE;
+	}
+
+	private static int clampBufferSize(long size) {
+		return (int) Math.max(MIN_BUFFER_SIZE, Math.min(MAX_BUFFER_SIZE, size));
+	}
 
 	/** uid -> user name and gid -> group name, learned from directory listings. */
 	private final Map<Integer,String> userNames = new ConcurrentHashMap<>();
@@ -951,6 +989,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.implementation = implementation;
 		ret.attributeCacheTtl = attributeCacheTtl;
 		ret.chunkSize = chunkSize;
+		ret.chunkSizeExplicit = chunkSizeExplicit;
 		ret.maxChannels = maxChannels;
 		ret.channelWaitTimeout = channelWaitTimeout;
 		ret.safeOverwrite = safeOverwrite;
@@ -1007,6 +1046,9 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.setProperty(PROP_MAX_CHANNELS, ""+maxChannels);
 		ret.setProperty(PROP_CHANNEL_WAIT_TIMEOUT, ""+channelWaitTimeout);
 		ret.setProperty(PROP_SAFE_OVERWRITE, ""+safeOverwrite);
+		if( chunkSizeExplicit ) {
+			ret.setProperty(PROP_BUFFER_SIZE, ""+chunkSize);
+		}
 
 		return ret;
 	}
@@ -1116,6 +1158,16 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		if( safe != null && !safe.trim().isEmpty()) {
 			setSafeOverwrite(Boolean.parseBoolean(safe.trim()));
 		}
+		String buffer = p.getProperty(PROP_BUFFER_SIZE);
+		if( buffer != null && !buffer.trim().isEmpty()) {
+			// No dialog shows this, so a bad value can't be fixed there and must not stop
+			// the connection: say so and keep the size as it is.
+			try {
+				setBufferSize(clampBufferSize(Long.parseLong(buffer.trim())));
+			} catch (NumberFormatException e) {
+				logError("Ignoring "+PROP_BUFFER_SIZE+" '"+buffer+"': not a number");
+			}
+		}
 	}
 
 	@Override
@@ -1219,11 +1271,31 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	}
 
 	public void setChunkSize(int chunk_size) {
-		this.chunkSize = chunk_size;;
+		this.chunkSize = chunk_size;
+		this.chunkSizeExplicit = true;
 	}
 
 	public int getChunkSize() {
 		return chunkSize;
+	}
+
+	/**
+	 * The size of one read or write against this server: the chunk size, which random access
+	 * and seekable streams use, and what a copy loop should read and write at a time.
+	 * Each factory has its own, set from {@link #PROP_BUFFER_SIZE} or here, or else the
+	 * JVM default ({@link #defaultBufferSize()}). It isn't part of the connection's session
+	 * key, and a stream reads it when it is opened.
+	 */
+	public int getBufferSize() {
+		return chunkSize;
+	}
+
+	/**
+	 * @param size bytes; kept within {@link #MIN_BUFFER_SIZE} and {@link #MAX_BUFFER_SIZE}
+	 * (setChunkSize doesn't limit it)
+	 */
+	public void setBufferSize(int size) {
+		setChunkSize(clampBufferSize(size));
 	}
 
 
