@@ -1,5 +1,6 @@
 package us.bringardner.parley.files.sftp.client.jsch;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -230,8 +231,14 @@ class JschSftpChannel implements SftpChannel {
 
 	@Override
 	public OutputStream write(String path, boolean append) throws IOException {
-		return call(path, () -> sftp.put(path, append ? ChannelSftp.APPEND : ChannelSftp.OVERWRITE));
+		OutputStream out = call(path, () -> sftp.put(path, append ? ChannelSftp.APPEND : ChannelSftp.OVERWRITE));
+		// JSch's stream sends one SFTP request for every write(), so a byte at a time
+		// (160 KB took 2.6 s, against 30 ms with the other libraries) costs a request per byte.
+		return new BufferedOutputStream(out, WRITE_BUFFER);
 	}
+
+	/** The size of a write request JSch's stream sends, at most. */
+	private static final int WRITE_BUFFER = 32 * 1024;
 
 	/**
 	 * JSch's public API can't send SFTP's exclusive-create flag, so this
