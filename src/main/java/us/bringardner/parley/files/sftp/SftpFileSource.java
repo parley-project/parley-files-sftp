@@ -25,6 +25,8 @@
  */
 package us.bringardner.parley.files.sftp;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,6 +51,8 @@ import us.bringardner.parley.files.FileSourceRandomAccessStream;
 import us.bringardner.parley.files.IRandomAccessStream;
 import us.bringardner.parley.files.FileSourceUser;
 import us.bringardner.parley.files.ISeekableInputStream;
+import us.bringardner.parley.files.StreamOption;
+import us.bringardner.parley.files.StreamOptions;
 import us.bringardner.parley.files.fileproxy.FileProxy;
 import us.bringardner.parley.files.sftp.client.SftpAttributes;
 import us.bringardner.parley.files.sftp.client.SftpChannel;
@@ -76,25 +80,32 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		private final String targetPath;
 
 		SftpOutputStream (boolean append) throws IOException {
+			this(append, 0);
+		}
+
+		/** @param bufferSize a buffer of this size in front of the library's stream, or 0 for none */
+		SftpOutputStream (boolean append, int bufferSize) throws IOException {
 			attr = null;
 			exists = null;
 
 			mySftp = factory.openSftp();
 			String temp = null;
 			String target = null;
+			OutputStream opened;
 			try {
 				if( !append && factory.isSafeOverwrite()) {
 					target = replaceTarget();
 					temp = tempPathFor(target);
-					this.out = mySftp.write(temp, false);
+					opened = mySftp.write(temp, false);
 				} else {
-					this.out = mySftp.write(path, append);
+					opened = mySftp.write(path, append);
 				}
 			} catch (IOException | RuntimeException e) {
 				// don't leak the channel when the open fails
 				mySftp.close();
 				throw e;
 			}
+			this.out = bufferSize > 0 ? new BufferedOutputStream(opened, bufferSize) : opened;
 			tempPath = temp;
 			targetPath = target;
 		}
@@ -196,11 +207,17 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		}
 
 		public SftpInputStream(long skipTo) throws IOException {
+			this(skipTo, 0);
+		}
+
+		/** @param bufferSize a buffer of this size in front of the library's stream, or 0 for none */
+		public SftpInputStream(long skipTo, int bufferSize) throws IOException {
 			// Reading changes nothing worth asking the server about again, so the
 			// cached attributes are kept (clearing them cost a stat after every read).
 			mySftp = factory.openSftp();
 			try {
-				in = mySftp.read(path, skipTo);
+				InputStream opened = mySftp.read(path, skipTo);
+				in = bufferSize > 0 ? new BufferedInputStream(opened, bufferSize) : opened;
 			} catch (IOException | RuntimeException e) {
 				// don't leak the channel when the open fails
 				mySftp.close();
@@ -1100,6 +1117,81 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			return new SftpInputStream(skipTo);
 		} catch (IOException e) {
 			throw openError(path, e);
+		}
+	}
+
+	// ---- streams with their own sizes (see StreamOptions)
+
+	/**
+	 * BUFFER_SIZE: for the sequential streams, a buffer of that size between the caller and the
+	 * SSH library's stream. It is what the caller's reads and writes are served from, and what
+	 * a loop that copies the stream should move per call; the library asks the server in
+	 * requests of its own size. Without it, the stream is the library's, as always.
+	 * <p>
+	 * CHUNK_SIZE: for seekable and random access streams, how much one request to the
+	 * server reads or writes, and the size of the chunk that is cached.
+	 */
+	@Override
+	public java.util.Set<StreamOption<?>> supportedStreamOptions() {
+		return java.util.Set.of(StreamOption.BUFFER_SIZE, StreamOption.CHUNK_SIZE);
+	}
+
+	/**
+	 * What a stream opened without options uses: the factory's size for both. (It is one value
+	 * here, because a chunk is also what one request moves; see SftpFileSourceFactory.getBufferSize.)
+	 */
+	@Override
+	public StreamOptions getStreamDefaults() {
+		int size = factory.getBufferSize();
+		return StreamOptions.NONE.withBufferSize(size).withChunkSize(size);
+	}
+
+	/** The size asked for in options, kept to the factory's limits; 0 if there isn't one. */
+	private static int limited(Integer size) {
+		return size == null || size <= 0 ? 0 : SftpFileSourceFactory.clampBufferSize(size);
+	}
+
+	@Override
+	public InputStream getInputStream(StreamOptions options) throws IOException {
+		return getInputStream(0, options);
+	}
+
+	@Override
+	public InputStream getInputStream(long skipTo, StreamOptions options) throws IOException {
+		try {
+			return new SftpInputStream(skipTo, limited(StreamOptions.orNone(options).get(StreamOption.BUFFER_SIZE)));
+		} catch (IOException e) {
+			throw openError(path, e);
+		}
+	}
+
+	@Override
+	public OutputStream getOutputStream(boolean append, StreamOptions options) throws IOException {
+		try {
+			return new SftpOutputStream(append, limited(StreamOptions.orNone(options).get(StreamOption.BUFFER_SIZE)));
+		} catch (IOException e) {
+			throw openError(path, e);
+		}
+	}
+
+	@Override
+	public ISeekableInputStream getSeekableInputStream(StreamOptions options) throws IOException {
+		return new SftpSeekableInputStream(this, limited(StreamOptions.orNone(options).get(StreamOption.CHUNK_SIZE)));
+	}
+
+	@Override
+	public IRandomAccessStream getRandomAccessStream(String mode, StreamOptions options) throws IOException {
+		SftpRandomAccessIoController io = new SftpRandomAccessIoController(this, mode,
+				limited(StreamOptions.orNone(options).get(StreamOption.CHUNK_SIZE)));
+		try {
+			return new FileSourceRandomAccessStream(io, mode);
+		} catch (IOException | RuntimeException e) {
+			try {
+				io.close();
+			} catch (Exception e2) {
+				e.addSuppressed(e2);
+			}
+			throw e;
 		}
 	}
 

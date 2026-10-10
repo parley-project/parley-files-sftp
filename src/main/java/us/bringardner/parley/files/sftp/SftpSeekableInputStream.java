@@ -43,10 +43,18 @@ public class SftpSeekableInputStream implements ISeekableInputStream {
 	 *         can't be read (the same cases in which RandomAccessFile throws it)
 	 */
 	SftpSeekableInputStream(SftpFileSource file) throws IOException {
+		this(file, 0);
+	}
+
+	/**
+	 * @param chunkSize the size of the buffer, which is how much one request reads, or 0 for the
+	 *        factory's chunk size
+	 */
+	SftpSeekableInputStream(SftpFileSource file, int chunkSize) throws IOException {
 		this.file = file;
 		this.path = file.getAbsolutePath();
 		SftpFileSourceFactory factory = (SftpFileSourceFactory) file.getFileSourceFactory();
-		this.buffer = new byte[Math.max(1024, factory.getChunkSize())];
+		this.buffer = new byte[Math.max(1024, chunkSize > 0 ? chunkSize : factory.getChunkSize())];
 		this.channel = factory.openSftp();
 		try {
 			SftpAttributes a = channel.stat(path);   // follows links

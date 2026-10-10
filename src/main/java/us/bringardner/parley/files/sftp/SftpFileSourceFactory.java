@@ -307,7 +307,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		return DEFAULT_CHUNK_SIZE;
 	}
 
-	private static int clampBufferSize(long size) {
+	/** @return size kept within {@link #MIN_BUFFER_SIZE} and {@link #MAX_BUFFER_SIZE} */
+	static int clampBufferSize(long size) {
 		return (int) Math.max(MIN_BUFFER_SIZE, Math.min(MAX_BUFFER_SIZE, size));
 	}
 
