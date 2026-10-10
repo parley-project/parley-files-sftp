@@ -1025,12 +1025,30 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		}
 		SftpFileSource fs = (SftpFileSource) dest;
 		boolean ret = false;
+		if( exists() && myName.equals(yourName) && !myName.equals("/") ) {
+			// as java.io.File: renaming a file to itself is a success that changes nothing
+			return true;
+		}
 		if( exists() && !dest.exists()) {
 			if( !(myName.equals("/") || yourName.equals("/") || myName.equals(yourName))) {
-				factory.sftp(c -> { c.rename(myName, yourName); return null; });
-				ret = true;
-				fs.clearAttr();
-				clearAttr();
+				try {
+					factory.sftp(c -> { c.rename(myName, yourName); return null; });
+					ret = true;
+				} catch (IOException e) {
+					// as java.io.File.renameTo: a refusal (the directory it goes in isn't there, no
+					// permission) is "false", not an exception. This is told apart from a failure of
+					// the connection by looking again: if the file is still where it was and the
+					// destination still isn't there, the rename didn't happen; anything else is thrown.
+					clearAttr();
+					fs.clearAttr();
+					if( !(exists() && !fs.exists()) ) {
+						throw e;
+					}
+					ret = false;
+				} finally {
+					fs.clearAttr();
+					clearAttr();
+				}
 			}
 		}
 		return ret;
@@ -1040,7 +1058,13 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	public synchronized  boolean setLastModifiedTime(long time) throws IOException {
 		boolean ret = false;
 		int time2 = (int)(time/1000);
-		factory.sftp(c -> { c.setModifiedTime(path, time2); return null; });
+		try {
+			factory.sftp(c -> { c.setModifiedTime(path, time2); return null; });
+		} catch (NoSuchFileException e) {
+			// as java.io.File.setLastModified: false for a path that doesn't exist (this threw)
+			clearAttr();
+			return false;
+		}
 		attr = null;
 		SftpAttributes a = getAttr();   // null if it was deleted meanwhile
 		ret = a != null && a.getMTime()==time2;
@@ -1050,8 +1074,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 	@Override
 	public boolean setReadOnly() throws IOException {
-		// not supported
-		return false;
+		// as java.io.File.setReadOnly: nobody can write it. (This answered false and did nothing.)
+		return changeMode(false, 0222);
 	}
 
 	@Override
