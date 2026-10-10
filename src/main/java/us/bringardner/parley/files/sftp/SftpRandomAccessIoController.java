@@ -48,6 +48,8 @@ import us.bringardner.parley.files.sftp.client.SftpFile;
 public class SftpRandomAccessIoController extends AbstractRandomAccessIoController {
 
 	private final SftpFileSourceFactory myFactory;
+	/** Bytes one request reads or writes; fixed when the stream was opened. */
+	private final int chunkSize;
 	private final SftpChannel channel;
 	private SftpFile handle;
 	/** Opened with mode "r": the handle is read-only. */
@@ -63,6 +65,7 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 	public SftpRandomAccessIoController(FileSource file) throws IOException {
 		super(file);
 		myFactory = (SftpFileSourceFactory) file.getFileSourceFactory();
+		this.chunkSize = myFactory.getChunkSize();
 		channel = myFactory.randomAccessFactory().openSftp();   // it may write: see randomAccessFactory()
 		readOnly = false;
 	}
@@ -78,11 +81,23 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 	 *         mode, or can't be opened with the requested access
 	 */
 	public SftpRandomAccessIoController(FileSource file, String mode) throws IOException {
+		this(file, mode, 0);
+	}
+
+	/**
+	 * As {@link #SftpRandomAccessIoController(FileSource, String)}, with a chunk size of its
+	 * own: how much one request reads or writes, and the size of the chunk that is cached. It is
+	 * fixed for the life of the stream (the factory's can change under one that reads it each time).
+	 *
+	 * @param chunkSize bytes, or 0 for the factory's chunk size when this was opened
+	 */
+	public SftpRandomAccessIoController(FileSource file, String mode, int chunkSize) throws IOException {
 		super(file);
 		if( !("r".equals(mode) || "rw".equals(mode) || "rws".equals(mode) || "rwd".equals(mode))) {
 			throw new IllegalArgumentException("Illegal mode \""+mode+"\" must be one of \"r\", \"rw\", \"rws\", or \"rwd\"");
 		}
 		myFactory = (SftpFileSourceFactory) file.getFileSourceFactory();
+		this.chunkSize = chunkSize > 0 ? chunkSize : myFactory.getChunkSize();
 		readOnly = mode.equals("r");
 		// Writing goes through MINA even when the factory uses JSch, which
 		// can't write at an offset safely; see randomAccessFactory().
@@ -113,11 +128,15 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 		}
 	}
 
+	/** @return the chunk size this stream reads and writes in */
+	public int getChunkSize() {
+		return chunkSize;
+	}
+
 	@Override
 	protected Chunk readChunkForPos(long pos) throws IOException {
 		Chunk ret = new Chunk();
 		long len = length();
-		int chunkSize = myFactory.getChunkSize();
 		if(len == 0 || pos >= len) {
 			ret.size = 0;
 			ret.data = new byte[chunkSize];
