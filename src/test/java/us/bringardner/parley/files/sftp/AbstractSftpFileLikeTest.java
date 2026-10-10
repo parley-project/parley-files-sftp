@@ -35,7 +35,7 @@ public abstract class AbstractSftpFileLikeTest extends FileLikeBehaviorTests {
 		base = "SftpFileLikeTest-" + implementation();
 		FileSource dir = factory.createFileSource(base);
 		if( dir.exists() ) {
-			SftpRandomAccessTest.deleteAll(dir);
+			removeAll(dir);
 		}
 		assertTrue(dir.mkdirs(), "Can't create " + dir);
 	}
@@ -43,9 +43,27 @@ public abstract class AbstractSftpFileLikeTest extends FileLikeBehaviorTests {
 	@AfterAll
 	void disconnect() throws Exception {
 		if( factory != null ) {
-			SftpRandomAccessTest.deleteAll(factory.createFileSource(base));
+			removeAll(factory.createFileSource(base));
 			factory.disConnect();
 		}
+	}
+
+	/**
+	 * Deletes a tree, making directories writable first: a tree left by an earlier run may hold a
+	 * directory that a permission case made read-only, which can't have its children deleted.
+	 */
+	private static void removeAll(FileSource f) throws java.io.IOException {
+		if( f.isDirectory() ) {
+			f.setExecutable(true);   // without it nothing in the directory can be reached
+			f.setWritable(true);
+			FileSource[] kids = f.listFiles();
+			if( kids != null ) {
+				for(FileSource k : kids) {
+					removeAll(k);
+				}
+			}
+		}
+		f.delete();
 	}
 
 	@Override
