@@ -59,6 +59,17 @@ Code that needs to talk to the server directly can use the library-neutral inter
 | `serverAliveInterval` | 30000 | Milliseconds between keepalives; 0 turns them off |
 | `attributeCacheTtl` | 2000 | Milliseconds a file's details are cached; see below |
 
+## Links
+
+SFTP has symbolic links and hard links, and both are supported: `createSymbolicLink` and `createLink` use the
+server's `symlink` and `hardlink` requests.
+SFTP is aware of links, so nothing is hidden: `getLinkedTo()` gives a symbolic link's target, a link acts
+like what it leads to, a write through it changes the file it leads to (the link stays a link), and
+`delete()` and `renameTo()` act on the link. (An FTP server has to hide links from its clients and handles
+a write differently; that is FTP's rule, not this one.) `getCanonicalPath()` follows links (with `readlink`, up to 40 levels) and a
+link that leads nowhere keeps its own path, as `java.io.File`'s does. See
+[Links](https://github.com/tony-bringardner/parley-files#links) in parley-files.
+
 ## Caching
 
 Directory listings are never cached: every `listFiles()` asks the server, like `java.io.File`, so a listing always shows changes made through other objects or by other programs. The listing carries each child's details, so calling `isDirectory()` or `length()` on its results costs nothing more.
@@ -71,6 +82,6 @@ A file's own details (whether it exists, its size, times, type and owner) are ca
 | `0` | Always asks the server, exactly like `java.io.File` |
 | negative, e.g. `-1` | Kept until `refresh()` |
 
-Changes made through the same `FileSource` object (writing, deleting, renaming, changing permissions) are always seen at once, whatever the setting.
+Changes made through the same factory (writing, deleting, renaming, changing permissions, through any `FileSource` of it) are always seen at once, whatever the setting. A change made through another connection is seen when the time passes.
 
 Set it per factory with `setAttributeCacheTtl(millis)` or the `attributeCacheTtl` connection property, or for the whole JVM with `-Dparley.sftp.attributeCacheTtl=0`. A factory's own setting wins; changing it applies at once, to files already created too.
