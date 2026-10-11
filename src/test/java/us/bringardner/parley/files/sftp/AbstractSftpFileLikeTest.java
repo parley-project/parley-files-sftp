@@ -76,4 +76,10 @@ public abstract class AbstractSftpFileLikeTest extends FileLikeBehaviorTests {
 	protected FileSource sourceFor(String relative) throws Exception {
 		return factory.createFileSource(tree + "/" + relative);
 	}
+
+	/** SFTP version 3 stores a modified time as whole seconds. */
+	@Override
+	protected long modifiedTimeResolutionMillis() {
+		return 1000;
+	}
 }
