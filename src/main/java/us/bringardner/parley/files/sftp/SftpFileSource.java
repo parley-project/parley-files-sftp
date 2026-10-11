@@ -796,7 +796,57 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	/** As in POSIX (SYMLOOP_MAX / Linux ELOOP). */
 	static final int MAX_LINKS = 40;
 
+	/**
+	 * The canonical path, as java.io.File's: links and "." and ".." are resolved. A path that
+	 * can't be resolved all the way (it leads through a link that points at nothing) is resolved
+	 * as far as it goes, and what is left stays as it was written, so a link that leads nowhere
+	 * keeps its own name.
+	 */
 	static String canonicalize(SftpFileSourceFactory factory, String absolutePath) throws IOException {
+		int[] links = new int[1];
+		String resolved = resolve(factory, absolutePath, links);
+		if( links[0] == 0 || exists(factory, resolved) ) {
+			return resolved;
+		}
+		List<String> parts = new ArrayList<>();
+		for(String part : absolutePath.split("/")) {
+			if( part.isEmpty() || part.equals(".") ) {
+				continue;
+			}
+			if( part.equals("..") ) {
+				if( !parts.isEmpty() ) {
+					parts.remove(parts.size()-1);
+				}
+				continue;
+			}
+			parts.add(part);
+		}
+		for(int k = parts.size()-1; k >= 0; k--) {
+			String head = "/" + String.join("/", parts.subList(0, k));
+			String r = resolve(factory, head, new int[1]);
+			if( exists(factory, r) ) {
+				String rest = String.join("/", parts.subList(k, parts.size()));
+				return r.equals("/") ? "/" + rest : r + "/" + rest;
+			}
+		}
+		return "/" + String.join("/", parts);
+	}
+
+	private static boolean exists(SftpFileSourceFactory factory, String path) throws IOException {
+		if( path.equals("/") ) {
+			return true;
+		}
+		try {
+			return factory.lstat(path) != null;
+		} catch (IOException e) {
+			if( isNoSuchFile(e) ) {
+				return false;
+			}
+			throw e;
+		}
+	}
+
+	private static String resolve(SftpFileSourceFactory factory, String absolutePath, int[] linkCount) throws IOException {
 		Deque<String> todo = new ArrayDeque<>(Arrays.asList(absolutePath.split("/")));
 		List<String> done = new ArrayList<>();
 		// index in 'done' of the first element that doesn't exist, or -1
@@ -849,6 +899,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			}
 		}
 
+		linkCount[0] = links;
 		return "/"+String.join("/", done);
 	}
 
