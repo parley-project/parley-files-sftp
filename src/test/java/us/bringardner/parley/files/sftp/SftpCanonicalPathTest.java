@@ -36,6 +36,7 @@ import us.bringardner.parley.files.fileproxy.FileProxyFactory;
  * can't be escaped. Uses an in-process SSH server that serves the local file system,
  * so the links are made directly with java.nio.
  */
+@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "serves the local file system by absolute path; the embedded server has no usable file factory on Windows")
 public class SftpCanonicalPathTest {
 
 	static final int PORT = 2224;

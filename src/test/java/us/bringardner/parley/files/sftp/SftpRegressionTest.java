@@ -196,6 +196,7 @@ public class SftpRegressionTest {
 	}
 
 	/** setWritable(b, ownerOnly) had ownerOnly inverted. */
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "POSIX permission bits: the embedded server serves a Windows directory")
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void setWritableOwnerOnly(String impl) throws IOException {

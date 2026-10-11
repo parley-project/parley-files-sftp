@@ -16,4 +16,18 @@ public class SftpNioProviderTests extends AbstractNioProviderTests {
 		remoteTestFileDirPath = "SftpNioProviderTests";
 		factory = TestServer.connect(null);
 	}
+
+	@Override
+	@org.junit.jupiter.api.Test
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "POSIX permission bits: the embedded server serves a Windows directory")
+	public void testFileAttributes() throws Exception {
+		super.testFileAttributes();
+	}
+
+	@Override
+	@org.junit.jupiter.api.Test
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "POSIX permission bits: the embedded server serves a Windows directory")
+	public void testCreateDir() throws Exception {
+		super.testCreateDir();
+	}
 }
