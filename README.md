@@ -85,3 +85,24 @@ A file's own details (whether it exists, its size, times, type and owner) are ca
 Changes made through the same factory (writing, deleting, renaming, changing permissions, through any `FileSource` of it) are always seen at once, whatever the setting. A change made through another connection is seen when the time passes.
 
 Set it per factory with `setAttributeCacheTtl(millis)` or the `attributeCacheTtl` connection property, or for the whole JVM with `-Dparley.sftp.attributeCacheTtl=0`. A factory's own setting wins; changing it applies at once, to files already created too.
+
+## Testing
+
+`mvn package` runs the whole suite. Which SSH server the tests talk to is chosen once per run with
+`-Dparley.sftp.test.server`:
+
+| Value | Server |
+|---|---|
+| `auto` (default) | OpenSSH on localhost:22 if the test account can log in, otherwise the embedded server |
+| `local` | Always OpenSSH on localhost:22, with the test accounts `unittest1` to `unittest4` (see `TestServer`) |
+| `embedded` | Always an embedded SSH server on a free port, with its home directory in `target/embedded-sftp/home`. Needs nothing installed, so use this for CI |
+
+Tests that need a real OpenSSH server (links, Unix permissions, the remote user, shell commands, the
+channel limit) are skipped on the embedded server.
+
+Most tests are parameterized to run with every SSH library. Pick the library for a run with
+`-Dparley.sftp.implementation=jsch` (the default), `mina` or `parley`.
+
+A few tests start their own embedded servers on fixed ports (for example 2224), so they can clash on
+a machine that runs several builds at once. Add `-Dsurefire.timeout=540` so a hung test fails the run
+instead of stalling it.
