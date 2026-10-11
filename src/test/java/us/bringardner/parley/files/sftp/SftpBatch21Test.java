@@ -133,9 +133,18 @@ public class SftpBatch21Test {
 		assertFalse(mine.exists());
 		assertFalse(parent.exists());
 		assertTrue(jsch.createFileSource(d+"/a/b").mkdirs(), "the other program");
-		assertTrue(mine.mkdirs());
-		assertTrue(parent.mkdirs());
+		// The directory is there now, so nothing is made and mkdirs() is false, as java.io.File's
+		// is. A change made through the same factory is seen at once; one made through another
+		// connection when the remembered answer expires, and until then the answer may be true
+		// ("made by someone else since exists() was answered"). What must never happen is a throw.
+		boolean seenAtOnce = factory(impl) == jsch;
+		boolean made = mine.mkdirs();
+		if( seenAtOnce ) {
+			assertFalse(made);
+		}
+		parent.mkdirs();
 		assertTrue(mine.isDirectory());
+		assertTrue(parent.isDirectory());
 	}
 
 	/** Like java.io.File: a file in the way is "false". It used to say true. */
