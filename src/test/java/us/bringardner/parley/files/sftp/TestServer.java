@@ -27,7 +27,7 @@ import com.sshtools.server.SshServer;
  * <li>"auto" (the default): the OpenSSH server on localhost:22 if unittest1 /
  * 0000 can log in there, otherwise the embedded server.</li>
  * <li>"local": the server on localhost:22, with the accounts unittest1 to
- * unittest4 (see CLAUDE.md). Tests fail if it isn't there.</li>
+ * unittest4 (see the README's Testing section). Tests fail if it isn't there.</li>
  * <li>"embedded": an embedded Maverick server, started on a free port, with
  * one account (unittest1 / 0000) whose home directory is
  * target/embedded-sftp/home. It needs nothing installed, so CI can run the
@@ -47,6 +47,9 @@ final class TestServer {
 	static final int LOCAL_PORT = 22;
 
 	private static SshServer embedded;
+	/** The embedded server on Windows (see startEmbeddedMina). */
+	private static org.apache.sshd.server.SshServer embeddedMina;
+	private static boolean embeddedStarted;
 	private static int embeddedPort;
 	/** The resolved choice; null until first asked. */
 	private static Boolean local;
@@ -107,7 +110,7 @@ final class TestServer {
 		if( isLocal()) {
 			return LOCAL_PORT;
 		}
-		if( embedded == null ) {
+		if( !embeddedStarted ) {
 			startEmbedded();
 		}
 		return embeddedPort;
@@ -155,6 +158,10 @@ final class TestServer {
 		if( !home.mkdirs()) {
 			throw new IOException("Can't create "+home);
 		}
+		if( System.getProperty("os.name", "").toLowerCase().startsWith("windows") ) {
+			startEmbeddedMina(home);
+			return;
+		}
 		try (ServerSocket s = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
 			embeddedPort = s.getLocalPort();
 		}
@@ -172,6 +179,40 @@ final class TestServer {
 			throw new IOException("Can't start the embedded SSH server: "+e, e);
 		}
 		Runtime.getRuntime().addShutdownHook(new Thread(embedded::close, "embedded SSH server shutdown"));
+		embeddedStarted = true;
+	}
+
+	/**
+	 * The embedded server on Windows. Maverick's file factory can't be used there: it strips the
+	 * backslashes from its own home path ("C:UsersX...home/a.txt is not a valid file path"), and
+	 * closes the connection when it is given the real path. Apache MINA's SFTP server, whose virtual
+	 * file system is rooted in the same directory, works.
+	 */
+	private static void startEmbeddedMina(File home) throws IOException {
+		try {
+			java.security.KeyPairGenerator g = java.security.KeyPairGenerator.getInstance("EC");
+			g.initialize(new java.security.spec.ECGenParameterSpec("secp256r1"));
+			org.apache.sshd.server.SshServer server = org.apache.sshd.server.SshServer.setUpDefaultServer();
+			server.setHost(InetAddress.getLoopbackAddress().getHostAddress());
+			server.setPort(0);
+			server.setKeyPairProvider(org.apache.sshd.common.keyprovider.KeyPairProvider.wrap(g.generateKeyPair()));
+			server.setPasswordAuthenticator((user, password, session) -> USER.equals(user) && PASSWORD.equals(password));
+			server.setSubsystemFactories(java.util.Collections.singletonList(new org.apache.sshd.sftp.server.SftpSubsystemFactory()));
+			server.setFileSystemFactory(new org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory(home.toPath()));
+			server.start();
+			embeddedPort = server.getPort();
+			embeddedMina = server;
+		} catch (Exception e) {
+			throw new IOException("Can't start the embedded SSH server: "+e, e);
+		}
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			try {
+				embeddedMina.stop(true);
+			} catch (IOException e) {
+				// shutting down
+			}
+		}, "embedded SSH server shutdown"));
+		embeddedStarted = true;
 	}
 
 	private static void deleteAll(Path dir) throws IOException {
