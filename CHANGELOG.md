@@ -31,3 +31,23 @@ part of the Parley library family.
   `bjl.sftp.implementation` and `bjl.sftp.attributeCacheTtl` are still read when the new ones aren't
   set. The test-only `bjl.sftp.test.server` is now `parley.sftp.test.server`.
 - `SftpLegacyNamesTest` checks that the old names keep working.
+
+### Added
+
+- `bufferSize` (also `parley.sftp.bufferSize`; within 1 KB and 16 MB) is another name for `chunkSize`, and a
+  stream can be opened with its own (`StreamOption.BUFFER_SIZE` or `CHUNK_SIZE`). A random access stream
+  keeps the size it was opened with.
+- A FileSource that was kept sees a change made through any other FileSource of the same factory at once
+  (see parley-files' `getChangeCount()`); it used to be seen after the attribute cache time (2 s). A change
+  made through another connection is still seen when that time passes (`attributeCacheTtl`).
+
+### Changed (no code change needed)
+
+- In the way of `java.io.File`: `mkdirs` (false for what is there), `list`/`listFiles` of a missing
+  directory (null), `delete` of a directory that isn't empty (false), `renameTo` (itself, onto something, a
+  missing directory), `setReadOnly` (write bits), `setLastModified` of a missing path (false), opening a
+  directory for reading (`FileNotFoundException`; the server let it open).
+- `getCanonicalPath()` of a link that leads nowhere is its own path (the longest leading part that resolves
+  is resolved and the rest is left as written), as `java.io.File`'s is.
+- `MinaSftpChannel` reports an unchecked IO error as an `IOException`; `JschSftpChannel` buffers writes
+  (32 KB).
