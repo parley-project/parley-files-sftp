@@ -28,4 +28,11 @@ public class SftpFileSourceTest extends AbstractTestClass {
 		TestServer.assumeOpenSsh();
 		super.testIsChildOfMineContract();
 	}
+
+	@Override
+	@org.junit.jupiter.api.Test
+	@org.junit.jupiter.api.condition.DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "POSIX permission bits: the embedded server serves a Windows directory")
+	public void testPermissions() throws java.io.IOException {
+		super.testPermissions();
+	}
 }
