@@ -85,6 +85,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 		/** @param bufferSize a buffer of this size in front of the library's stream, or 0 for none */
 		SftpOutputStream (boolean append, int bufferSize) throws IOException {
+			// opening for write can create or empty the file: every handle forgets what it knew
+			factory.noteChange();
 			attr = null;
 			exists = null;
 
@@ -297,6 +299,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	private Boolean exists;
 	/** System.nanoTime() when the cached answers above and below were filled. */
 	private long cachedAt;
+	/** The factory's change count when they were filled: a change made since drops them. */
+	private long seenChange;
 	private String path;
 	private SftpFileSourceFactory factory;
 	private Boolean isLink;
@@ -371,6 +375,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			this.exists = (true);
 		}
 		this.cachedAt = System.nanoTime();
+		this.seenChange = factory.getChangeCount();
 	}
 
 	/**
@@ -427,6 +432,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	}
 
 	private synchronized void clearOwner() {
+		factory.noteChange();
 		attr = null;
 		owner = null;
 		group = null;
@@ -434,6 +440,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 	/** Forget cached attributes, so the next call re-reads them from the server. */
 	synchronized void clearAttr()  {
+		// something changed (this is called after every change): every handle drops what it knew
+		factory.noteChange();
 		attr = null;
 		exists = null;
 	}
@@ -451,6 +459,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	private void startClockIfEmpty() {
 		if( attr == null && exists == null && isLink == null && owner == null && group == null ) {
 			cachedAt = System.nanoTime();
+			seenChange = factory.getChangeCount();
 		}
 	}
 
@@ -459,7 +468,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		if( ttl < 0 ) {
 			return;
 		}
-		if( ttl == 0 || System.nanoTime() - cachedAt > ttl * 1_000_000L ) {
+		if( ttl == 0 || System.nanoTime() - cachedAt > ttl * 1_000_000L || seenChange != factory.getChangeCount() ) {
 			attr = null;
 			exists = null;
 			isLink = null;
@@ -976,8 +985,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			}
 			throw e;
 		}
-		attr =  null;
-		exists = null;
+		clearAttr();   // forgets this handle's answers, and tells the others something changed
 		return exists();
 	}
 
@@ -1069,6 +1077,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			clearAttr();
 			return false;
 		}
+		factory.noteChange();
 		attr = null;
 		SftpAttributes a = getAttr();   // null if it was deleted meanwhile
 		ret = a != null && a.getMTime()==time2;
@@ -1547,6 +1556,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	public boolean setLastAccessTime(long time) throws IOException {
 		int time2 = (int)(time/1000);
 		factory.sftp(c -> { c.setAccessTime(path, time2); return null; });
+		factory.noteChange();
 		attr = null;
 		SftpAttributes a = getAttr();   // null if it was deleted meanwhile
 		return a != null && a.getATime() == time2;
