@@ -77,6 +77,24 @@ public abstract class AbstractSftpFileLikeTest extends FileLikeBehaviorTests {
 		return factory.createFileSource(tree + "/" + relative);
 	}
 
+	/** Not on the embedded Maverick server: it logs in as another user than the files' owner. */
+	@Override
+	protected boolean permissionsOfExistingPathsAreComparable() {
+		return !TestServer.isEmbeddedMaverick();
+	}
+
+	/** Not on the embedded Maverick server: its links lead outside its sandbox. */
+	@Override
+	protected boolean supportsSymbolicLinks() {
+		return !TestServer.isEmbeddedMaverick();
+	}
+
+	/** Not on the embedded Maverick server: it has no hardlink@openssh.com. */
+	@Override
+	protected boolean supportsHardLinks() {
+		return !TestServer.isEmbeddedMaverick();
+	}
+
 	/** SFTP version 3 stores a modified time as whole seconds. */
 	@Override
 	protected long modifiedTimeResolutionMillis() {
