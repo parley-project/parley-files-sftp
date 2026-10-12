@@ -5,3 +5,4 @@ ssh*
 .classpath
 .project
 .settings/
+/bin/
