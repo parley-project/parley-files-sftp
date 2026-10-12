@@ -151,6 +151,15 @@ final class TestServer {
 		assumeTrue(isLocal(), "Needs the OpenSSH server on "+HOST+":"+LOCAL_PORT+" with the unittest accounts");
 	}
 
+	/**
+	 * True if the tests use the embedded Maverick server (not on Windows, which gets MINA's). It logs
+	 * in as USER while the files belong to whoever runs the tests, a symbolic link it makes keeps the
+	 * host's absolute path (outside its sandbox), and it has no hard links.
+	 */
+	static boolean isEmbeddedMaverick() {
+		return !isLocal() && !System.getProperty("os.name", "").toLowerCase().startsWith("windows");
+	}
+
 	private static void startEmbedded() throws IOException {
 		Path root = new File("target/embedded-sftp").getAbsoluteFile().toPath();
 		deleteAll(root);
