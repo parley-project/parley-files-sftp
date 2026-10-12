@@ -94,7 +94,10 @@ class MinaSftpFile implements SftpFile {
 				closeReader();   // the end of the file; ask the server again next time
 			}
 		} else {
-			n = MinaSftpChannel.call(path, () -> channel.sftp.read(handle, position, b, off, len));
+			// One request of at most BUFFER_SIZE, as the reader asks: MINA sends 'len' as one request,
+			// and a server may close the channel on one larger than it takes (Maverick does at 1 MB)
+			int want = Math.min(len, MinaSftpChannel.BUFFER_SIZE);
+			n = MinaSftpChannel.call(path, () -> channel.sftp.read(handle, position, b, off, want));
 		}
 		nextPosition = n > 0 ? position + n : -1;
 		return n;
