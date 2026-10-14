@@ -38,6 +38,9 @@ public class MinaProvider implements SshProvider {
 
 	@Override
 	public SshConnection connect(SshSettings s) throws IOException {
+		if( s.useAgent ) {
+			throw new IOException("Logging in with ssh-agent isn't supported by the mina SSH library yet; use implementation=jsch");
+		}
 		// One client per connection: the host-key policy is set on the client,
 		// and it differs between connections.
 		SshClient client = SshClient.setUpDefaultClient();
