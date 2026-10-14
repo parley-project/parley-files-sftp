@@ -35,6 +35,9 @@ public class ParleyProvider implements SshProvider {
 
 	@Override
 	public SshConnection connect(SshSettings s) throws IOException {
+		if( s.useAgent ) {
+			throw new IOException("Logging in with ssh-agent isn't supported by the parley SSH library yet; use implementation=jsch");
+		}
 		// One client per connection: the host-key policy and keepalive are set on the client
 		SshClient client = new SshClient();
 		boolean ok = false;

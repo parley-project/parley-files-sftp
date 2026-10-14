@@ -3,7 +3,13 @@ package us.bringardner.parley.files.sftp.client.jsch;
 import java.io.IOException;
 import java.util.Properties;
 
+import com.jcraft.jsch.AgentConnector;
+import com.jcraft.jsch.AgentIdentityRepository;
+import com.jcraft.jsch.AgentProxyException;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.SSHAgentConnector;
+import com.jcraft.jsch.UnixDomainSocketFactory;
+import com.jcraft.jsch.WindowsSSHAgentConnector;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
@@ -28,7 +34,9 @@ public class JschProvider implements SshProvider {
 			if( s.strictHostKeyChecking ) {
 				jsch.setKnownHosts(SshProviders.knownHostsFile(s));
 			}
-			if( s.privateKey != null ) {
+			if( s.useAgent ) {
+				jsch.setIdentityRepository(new AgentIdentityRepository(agentConnector()));
+			} else if( s.privateKey != null ) {
 				jsch.addIdentity(null, s.privateKey, null, null);
 			} else if( s.privateKeyFile != null && !s.privateKeyFile.isEmpty()) {
 				jsch.addIdentity(s.privateKeyFile);
@@ -38,7 +46,11 @@ public class JschProvider implements SshProvider {
 			Properties config = new Properties();
 			config.put("StrictHostKeyChecking", s.strictHostKeyChecking ? "yes" : "no");
 			session.setConfig(config);
-			if( s.password != null ) {
+			if( s.useAgent ) {
+				// only the agent's keys: don't fall back to asking for a password
+				config.put("PreferredAuthentications", "publickey");
+				session.setConfig(config);
+			} else if( s.password != null ) {
 				session.setPassword(s.password);
 			}
 			if( s.serverAliveIntervalMs > 0 ) {
@@ -57,6 +69,31 @@ public class JschProvider implements SshProvider {
 				throw SshProviders.hostKeyRejected(s, m, e);
 			}
 			throw new IOException(m, e);
+		}
+	}
+
+	/**
+	 * The running ssh-agent: the Windows OpenSSH agent on Windows, otherwise the one
+	 * SSH_AUTH_SOCK names (needs Java 16 or later for its Unix domain socket).
+	 */
+	static AgentConnector agentConnector() throws IOException {
+		try {
+			AgentConnector c;
+			if( System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows")) {
+				c = new WindowsSSHAgentConnector();
+			} else {
+				String sock = System.getenv("SSH_AUTH_SOCK");
+				if( sock == null || sock.isEmpty()) {
+					throw new IOException("No ssh-agent: SSH_AUTH_SOCK isn't set");
+				}
+				c = new SSHAgentConnector(new UnixDomainSocketFactory(), java.nio.file.Paths.get(sock));
+			}
+			if( !c.isAvailable()) {
+				throw new IOException("The ssh-agent isn't running or can't be reached");
+			}
+			return c;
+		} catch (AgentProxyException e) {
+			throw new IOException("Can't use the ssh-agent: "+e.getMessage(), e);
 		}
 	}
 }

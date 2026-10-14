@@ -15,6 +15,8 @@ public final class SshSettings {
 	public String privateKeyFile;
 	/** Private key contents (PEM/OpenSSH format), or null. Used instead of privateKeyFile when set. */
 	public byte[] privateKey;
+	/** true: log in with the keys an ssh-agent holds; password and keys are not used. */
+	public boolean useAgent;
 	/** known_hosts file used when strictHostKeyChecking is true; null means ~/.ssh/known_hosts. */
 	public String knownHosts;
 	/** true: reject host keys not in known_hosts. false: accept any host key. */

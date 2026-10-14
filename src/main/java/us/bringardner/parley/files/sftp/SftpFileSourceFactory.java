@@ -33,6 +33,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ import us.bringardner.parley.files.sftp.client.SftpAttributes;
 import us.bringardner.parley.files.sftp.client.SftpChannel;
 import us.bringardner.parley.files.sftp.client.SftpEntry;
 import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.credentials.CredentialRef;
 import us.bringardner.parley.files.sftp.client.SshProvider;
 import us.bringardner.parley.files.sftp.client.SshProviders;
 import us.bringardner.parley.files.sftp.client.SshSettings;
@@ -79,14 +81,21 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	public static final String PROP_PRIVATE_KEY = "privateKey";
 	public static final String PROP_PASSWORD = "password";
 	/**
-	 * How to log in: {@link #AUTH_PASSWORD}, {@link #AUTH_KEY_FILE} or {@link #AUTH_KEY}. It
-	 * decides which of password, identityFile and privateKey a form asks for. Reading it is
-	 * optional: when it's missing it's worked out from which of those are set.
+	 * How to log in: {@link #AUTH_PASSWORD}, {@link #AUTH_KEY_FILE}, {@link #AUTH_KEY} or
+	 * {@link #AUTH_AGENT}. It decides which of password, identityFile and privateKey a form
+	 * asks for. Reading it is optional: when it's missing it's worked out from which of those
+	 * are set (ssh-agent is used only when it says so).
 	 */
 	public static final String PROP_AUTH = "auth";
 	public static final String AUTH_PASSWORD = "Password";
 	public static final String AUTH_KEY_FILE = "Private Key File";
 	public static final String AUTH_KEY = "Private Key";
+	/**
+	 * Log in with the keys an ssh-agent holds (SSH_AUTH_SOCK, or the Windows OpenSSH agent):
+	 * the agent signs, so the private key never reaches this program. Supported by the jsch
+	 * SSH library.
+	 */
+	public static final String AUTH_AGENT = "Agent";
 	/** Path of a known_hosts file used to check the server's host key. */
 	public static final String PROP_KNOWN_HOSTS = "knownHosts";
 	/**
@@ -206,10 +215,14 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 
 	private String host;
 	private String user;
+	/** As set: a password or a reference to one (@keychain:...); see {@link #secret(String, String)}. */
 	private String password;
 	private String privateKeyFileName;
 	private String sessionKey;
+	/** As set: a pasted private key, or (as text) a reference to one. */
 	private byte [] privateKey;
+	/** Log in through ssh-agent ({@link #AUTH_AGENT}). */
+	private boolean useAgent;
 	private int port = DEFAULT_PORT;
 	private String knownHosts;
 	private String strictHostKeyChecking = DEFAULT_STRICT_HOST_KEY_CHECKING;
@@ -751,7 +764,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	private String credentialHash() {
 		try {
 			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			for(String part : new String[] {password, privateKeyFileName, knownHosts, strictHostKeyChecking, getEffectiveImplementation()}) {
+			for(String part : new String[] {password, privateKeyFileName, knownHosts, strictHostKeyChecking, getEffectiveImplementation(), useAgent ? AUTH_AGENT : ""}) {
 				md.update((part == null ? "\0" : part).getBytes(StandardCharsets.UTF_8));
 				md.update((byte)0);
 			}
@@ -833,7 +846,16 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		try {
 			SshProvider provider = SshProviders.get(getEffectiveImplementation());
 			logDebug("Connecting to "+getUser()+"@"+getHost()+":"+getPort()+" with "+provider.getName());
-			s = new SharedSession(key, provider.connect(settings()), maxChannels, channelWaitTimeout);   // refs = 1: this factory's
+			SshSettings settings = settings();
+			try {
+				s = new SharedSession(key, provider.connect(settings), maxChannels, channelWaitTimeout);   // refs = 1: this factory's
+			} finally {
+				// the connection is logged in (or failed): the key copy isn't needed any more
+				if( settings.privateKey != null ) {
+					Arrays.fill(settings.privateKey, (byte) 0);
+				}
+				settings.password = null;
+			}
 		} catch (IOException | RuntimeException | Error e) {
 			synchronized (sessions) {
 				connecting.remove(key);
@@ -872,13 +894,27 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		}
 	}
 
-	private SshSettings settings() {
+	/**
+	 * The settings for one login. The password and a pasted key may be references
+	 * (@keychain:...): they are resolved here, inside connect(), and the key is a copy the
+	 * caller zeroes after the login.
+	 */
+	private SshSettings settings() throws IOException {
 		SshSettings s = new SshSettings();
 		s.host = getHost();
 		s.port = getPort();
 		s.user = getUser();
-		s.password = password;
-		s.privateKey = privateKey;
+		s.useAgent = useAgent;
+		if( !useAgent ) {
+			if( password != null && !password.isEmpty()) {
+				char[] pw = secret(PROP_PASSWORD, password);
+				s.password = new String(pw);
+				Arrays.fill(pw, '\0');
+			} else {
+				s.password = password;
+			}
+			s.privateKey = resolvePrivateKey();
+		}
 		s.privateKeyFile = privateKeyFileName;
 		s.knownHosts = knownHosts;
 		s.strictHostKeyChecking = "yes".equals(strictHostKeyChecking);
@@ -915,8 +951,41 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		}
 	}
 
-	/** How this factory logs in, from the credentials it has: a pasted key, else a key file, else a password. */
+	/** A copy of the pasted private key, with a reference resolved; null if there is none. */
+	private byte[] resolvePrivateKey() throws IOException {
+		if( privateKey == null ) {
+			return null;
+		}
+		String text = new String(privateKey, StandardCharsets.UTF_8);
+		if( !CredentialRef.isReference(text)) {
+			return privateKey.clone();
+		}
+		char[] key = secret(PROP_PRIVATE_KEY, text);
+		try {
+			java.nio.ByteBuffer bb = StandardCharsets.UTF_8.encode(java.nio.CharBuffer.wrap(key));
+			byte[] ret = Arrays.copyOfRange(bb.array(), bb.position(), bb.limit());
+			Arrays.fill(bb.array(), (byte) 0);
+			return ret;
+		} finally {
+			Arrays.fill(key, '\0');
+		}
+	}
+
+	/** Whether this factory logs in through ssh-agent. */
+	public boolean isUseAgent() {
+		return useAgent;
+	}
+
+	/** Logs in through ssh-agent ({@link #AUTH_AGENT}) instead of a password or key. */
+	public void setUseAgent(boolean useAgent) {
+		this.useAgent = useAgent;
+	}
+
+	/** How this factory logs in: ssh-agent if chosen, else from the credentials it has: a pasted key, else a key file, else a password. */
 	public String getAuth() {
+		if( useAgent ) {
+			return AUTH_AGENT;
+		}
 		return privateKey != null ? AUTH_KEY : privateKeyFileName != null ? AUTH_KEY_FILE : AUTH_PASSWORD;
 	}
 
@@ -926,7 +995,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 				ConnectionSetting.text(PROP_HOST, "Host").asRequired(),
 				ConnectionSetting.integer(PROP_PORT, "Port", 1L, 65535L).withDefault(""+DEFAULT_PORT).asRequired(),
 				ConnectionSetting.text(PROP_USER, "User").asRequired(),
-				ConnectionSetting.choice(PROP_AUTH, "Log in with", AUTH_PASSWORD, AUTH_KEY_FILE, AUTH_KEY),
+				ConnectionSetting.choice(PROP_AUTH, "Log in with", AUTH_PASSWORD, AUTH_KEY_FILE, AUTH_KEY, AUTH_AGENT),
 				ConnectionSetting.secret(PROP_PASSWORD, "Password").visibleWhen(PROP_AUTH, AUTH_PASSWORD),
 				ConnectionSetting.localFile(PROP_PRIVATE_KEY_FILE_NAME, "Private key file").asRequired()
 					.withDescription("An OpenSSH or PEM private key file").visibleWhen(PROP_AUTH, AUTH_KEY_FILE),
@@ -982,6 +1051,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.port = port;
 		ret.privateKeyFileName = privateKeyFileName;
 		ret.privateKey = privateKey;
+		ret.useAgent = useAgent;
 		ret.sessionKey = sessionKey;
 		ret.knownHosts = knownHosts;
 		ret.strictHostKeyChecking = strictHostKeyChecking;
@@ -1130,6 +1200,9 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		if( p.containsKey(PROP_PRIVATE_KEY)) {
 			String key = p.getProperty(PROP_PRIVATE_KEY);
 			privateKey = key == null || key.isEmpty() ? null : key.getBytes(StandardCharsets.UTF_8);
+		}
+		if( p.containsKey(PROP_AUTH)) {
+			useAgent = AUTH_AGENT.equalsIgnoreCase(p.getProperty(PROP_AUTH, "").trim());
 		}
 		// getConnectProperties() writes the session key, but it used to be
 		// ignored here, so a key set through properties never took effect
