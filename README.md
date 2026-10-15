@@ -23,7 +23,7 @@ Three SSH libraries are included, and which one is used is decided at run time:
 |---|---|
 | `jsch` (default) | [JSch, maintained fork](https://github.com/mwiede/jsch) (`com.github.mwiede:jsch`) |
 | `mina` | [Apache MINA SSHD](https://mina.apache.org/sshd-project/) |
-| `parley` | [parley-ssh](https://github.com/tony-bringardner/parley-ssh) (`us.bringardner.parley:parley-ssh`), Parley's own SSH library: no third party code |
+| `parley` | [parley-ssh](https://github.com/parley-project/parley-ssh) (`us.bringardner.parley:parley-ssh`), Parley's own SSH library: no third party code |
 
 Set it per factory with the `implementation` connection property:
 
@@ -68,7 +68,7 @@ like what it leads to, a write through it changes the file it leads to (the link
 `delete()` and `renameTo()` act on the link. (An FTP server has to hide links from its clients and handles
 a write differently; that is FTP's rule, not this one.) `getCanonicalPath()` follows links (with `readlink`, up to 40 levels) and a
 link that leads nowhere keeps its own path, as `java.io.File`'s does. See
-[Links](https://github.com/tony-bringardner/parley-files#links) in parley-files.
+[Links](https://github.com/parley-project/parley-files#links) in parley-files.
 
 ## Caching
 

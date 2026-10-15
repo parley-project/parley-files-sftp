@@ -28,8 +28,8 @@
 	<distributionManagement>
 		<repository>
 			<id>github</id>
-			<name>tony-bringardner</name>
-			<url>https://maven.pkg.github.com/tony-bringardner/parley-files-sftp</url>
+			<name>parley-project</name>
+			<url>https://maven.pkg.github.com/parley-project/parley-files-sftp</url>
 		</repository>
 	</distributionManagement>
 
