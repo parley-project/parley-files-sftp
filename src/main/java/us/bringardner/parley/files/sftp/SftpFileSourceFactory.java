@@ -1335,12 +1335,12 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	}
 
 	@Override
-	public char getPathSeperatorChar() {
+	public char getPathSeparatorChar() {
 		return ':';
 	}
 
 	@Override
-	public char getSeperatorChar() {
+	public char getSeparatorChar() {
 		return '/';
 	}
 
