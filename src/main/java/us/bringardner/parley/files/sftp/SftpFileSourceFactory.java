@@ -1105,7 +1105,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.setProperty(PROP_HOST, host == null ? "":host);
 		ret.setProperty(PROP_PORT, port <=0 ? ""+DEFAULT_PORT:""+port);
 		ret.setProperty(PROP_PRIVATE_KEY_FILE_NAME, privateKeyFileName == null ? "":privateKeyFileName);
-		ret.setProperty(PROP_PRIVATE_KEY, privateKey == null ? "":new String(privateKey));
+		ret.setProperty(PROP_PRIVATE_KEY, privateKey == null ? "":new String(privateKey, StandardCharsets.UTF_8));
 		ret.setProperty(PROP_AUTH, getAuth());
 		ret.setProperty(PROP_SESSION_KEY, sessionKey == null ? "":sessionKey);
 		ret.setProperty(PROP_KNOWN_HOSTS, knownHosts == null ? "":knownHosts);
