@@ -11,6 +11,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.Properties;
 import java.util.stream.Stream;
@@ -18,6 +19,7 @@ import java.util.stream.Stream;
 import com.sshtools.common.files.direct.NioFileFactory.NioFileFactoryBuilder;
 import com.sshtools.common.publickey.SshKeyPairGenerator;
 import com.sshtools.server.InMemoryPasswordAuthenticator;
+import us.bringardner.parley.files.test.FileSourceTestSupport;
 import com.sshtools.server.SshServer;
 
 /**
@@ -161,7 +163,7 @@ final class TestServer {
 	}
 
 	private static void startEmbedded() throws IOException {
-		Path root = new File("target/embedded-sftp").getAbsoluteFile().toPath();
+		Path root = Paths.get(FileSourceTestSupport.scratchDir("embedded-sftp"));
 		deleteAll(root);
 		File home = root.resolve("home").toFile();
 		if( !home.mkdirs()) {

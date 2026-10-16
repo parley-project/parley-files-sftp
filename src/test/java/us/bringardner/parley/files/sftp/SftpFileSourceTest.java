@@ -12,8 +12,8 @@ public class SftpFileSourceTest extends AbstractTestClass {
 
 	@BeforeAll
 	public static void setUp() throws IOException {
-		localTestFileDirPath = "TestFiles";
-		localCacheDirPath = "target/SftpFileSourceTestCache";
+		localTestFileDirPath = testFilesDir(SftpFileSourceTest.class);
+		localCacheDirPath = scratchDir("SftpFileSourceTestCache");
 		remoteTestFileDirPath = "SftpFileSourceTest";
 		factory = TestServer.connect(null);
 	}

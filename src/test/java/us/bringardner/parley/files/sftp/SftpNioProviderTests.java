@@ -11,8 +11,8 @@ public class SftpNioProviderTests extends AbstractNioProviderTests {
 
 	@BeforeAll
 	public static void setUp() throws IOException {
-		localTestFileDirPath = "TestFiles";
-		localCacheDirPath = "target/SftpNioProviderTestsCache";
+		localTestFileDirPath = testFilesDir(SftpNioProviderTests.class);
+		localCacheDirPath = scratchDir("SftpNioProviderTestsCache");
 		remoteTestFileDirPath = "SftpNioProviderTests";
 		factory = TestServer.connect(null);
 	}

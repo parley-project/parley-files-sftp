@@ -27,6 +27,7 @@ import com.sshtools.common.ssh.SshConnection;
 import com.sshtools.server.InMemoryPasswordAuthenticator;
 import com.sshtools.server.SshServer;
 
+import us.bringardner.parley.files.test.FileSourceTestSupport;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.fileproxy.FileProxyFactory;
 
@@ -50,7 +51,7 @@ public class SftpCanonicalPathTest {
 
 	@BeforeAll
 	public static void setUp() throws Exception {
-		base = Paths.get("target", "SftpCanonicalPathTest").toAbsolutePath();
+		base = Paths.get(FileSourceTestSupport.scratchDir("SftpCanonicalPathTest"));
 		deleteAll(base);
 		Files.createDirectories(base.resolve("root/sub"));
 		Path root = base.resolve("root");
