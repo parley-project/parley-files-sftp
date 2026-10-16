@@ -24,7 +24,6 @@ import org.apache.sshd.sftp.common.SftpConstants;
 import org.apache.sshd.sftp.common.SftpException;
 
 import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
 import us.bringardner.parley.files.sftp.client.SftpEntry;
 import us.bringardner.parley.files.sftp.client.SftpFile;
 import us.bringardner.parley.io.IoUtils;
@@ -239,8 +238,9 @@ class MinaSftpChannel extends AbstractSftpChannel {
 				long size = call(path, () -> sftp.stat(h).getSize());
 				if( size > 0 ) {   // 0 means "no hint" to the reader, which would then ask far ahead
 					// 'true': closing the stream closes the handle
-					return guardedInput(path, new SftpInputStreamAsync((AbstractSftpClient) sftp,
-							BUFFER_SIZE, offset, size, path, h, true));
+					InputStream in = new SftpInputStreamAsync((AbstractSftpClient) sftp,
+							BUFFER_SIZE, offset, size, path, h, true);
+					return guardedInput(path, in);
 				}
 			}
 			return new HandleInputStream(this, path, h, offset);

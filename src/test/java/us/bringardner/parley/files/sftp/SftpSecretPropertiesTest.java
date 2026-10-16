@@ -8,7 +8,6 @@ import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.files.sftp.SftpFileSourceFactory;
 
 /** BJL-21: the factory names its secret connection properties exactly. */
 public class SftpSecretPropertiesTest {

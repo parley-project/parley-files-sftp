@@ -111,7 +111,7 @@ public class SftpByteAtATimeTest {
 		try (InputStream in = f.getInputStream()) {
 			int pos = 0;
 			byte[] b = new byte[5000];
-			for(int round = 0; pos < SIZE - 40000; round++) {
+			while( pos < SIZE - 40000 ) {
 				assertEquals(data[pos] & 0xff, in.read(), "byte at "+pos);
 				pos++;
 				int n = in.read(b, 0, 5000);

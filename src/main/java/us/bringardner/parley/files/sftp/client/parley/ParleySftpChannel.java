@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
 import us.bringardner.parley.files.sftp.client.SftpEntry;
 import us.bringardner.parley.files.sftp.client.SftpFile;
 import us.bringardner.parley.ssh.sftp.SftpAttrs;

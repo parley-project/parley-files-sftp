@@ -1,5 +1,6 @@
 package us.bringardner.parley.files.sftp.client.jsch;
 
+import java.nio.charset.StandardCharsets;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -51,7 +52,7 @@ public class JschProvider implements SshProvider {
 				config.put("PreferredAuthentications", "publickey");
 				session.setConfig(config);
 			} else if( s.password != null ) {
-				session.setPassword(s.password);
+				session.setPassword(s.password.getBytes(StandardCharsets.UTF_8));
 			}
 			if( s.serverAliveIntervalMs > 0 ) {
 				session.setServerAliveInterval(s.serverAliveIntervalMs);

@@ -17,7 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Properties;
 import java.util.Random;
 
 import org.junit.jupiter.api.AfterAll;

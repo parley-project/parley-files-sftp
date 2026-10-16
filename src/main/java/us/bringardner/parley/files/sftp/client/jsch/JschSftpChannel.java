@@ -78,7 +78,6 @@ class JschSftpChannel implements SftpChannel {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")   // JSch 0.1.55 returns a raw Vector
 	public List<SftpEntry> list(String dir) throws IOException {
 		Vector<ChannelSftp.LsEntry> ls = call(dir, () -> sftp.ls(dir));
 		List<SftpEntry> ret = new ArrayList<>(ls.size());
