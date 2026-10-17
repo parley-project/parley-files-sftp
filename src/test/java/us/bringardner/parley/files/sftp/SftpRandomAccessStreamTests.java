@@ -11,6 +11,8 @@ public class SftpRandomAccessStreamTests extends AbstractRandomAccessStreamTests
 
 	@BeforeAll
 	public static void setUp() throws IOException {
+		// these shared tests write at positions
+		TestServer.assumeSupported(TestServer.WRITE_AT_POSITION);
 		remoteTestFileDirPath = "SftpRandomAccessStreamTests";
 		SftpFileSourceFactory sftp = TestServer.connect(null);
 		//  use a small chunk size to generate lot's of activity

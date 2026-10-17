@@ -24,14 +24,14 @@ part of the Parley library family.
 - `listFiles(ProgressMonitor)` is now `listFiles(FileSourceProgress)`.
 - **The SSH library is a provider on the class path.** `parley-files-sftp` no longer includes any SSH
   library; add a provider: `parley-files-sftp-parley` (parley-ssh), `parley-files-sftp-jsch` or
-  `parley-files-sftp-mina`. Each brings `parley-files-sftp` with it. Providers are found with
+  `parley-files-sftp-mina`, each a project of its own. Each brings `parley-files-sftp` with it. Providers are found with
   `ServiceLoader` (or `SshProviders.register`), and anyone can write one against the new
   `us.bringardner.parley.files.sftp.spi` package (it was `sftp.client`).
 - **parley is the default.** With no `implementation` set, parley-ssh's provider is used if it is on the
   class path, else the only provider there; with several and none named, connecting fails and asks for a
   name. (The default was JSch.)
 - The providers moved: `sftp.client.parley`, `.jsch` and `.mina` are now `sftp.parley`, `sftp.jsch` and
-  `sftp.mina`, each in its own artifact.
+  `sftp.mina`, each in its own project and artifact (see their CHANGELOGs).
 - The provider API: `SshSettings` and `SshConnection.ExecResult` have getters instead of public fields;
   `SftpAttributes` gives user and group ids and times as `long` (SFTP sends them unsigned, so times
   after 2038 stay right), and `SftpChannel.chown`, `chgrp`, `setModifiedTime` and `setAccessTime` take
@@ -45,14 +45,17 @@ part of the Parley library family.
 - System properties: `parley.sftp.implementation` and `parley.sftp.attributeCacheTtl`. The old
   `bjl.sftp.implementation` and `bjl.sftp.attributeCacheTtl` are still read when the new ones aren't
   set. The test-only `bjl.sftp.test.server` is now `parley.sftp.test.server`.
-- `SftpLegacyNamesTest` checks that the old names keep working.
-- **The jsch provider can't write at a position, and says so.** Writing to a random access stream with it
-  throws an `IOException` at the write (it used to go through a MINA connection to the same account, and
-  before that JSch emulated the write, which could put the data in the wrong place). Its README says so;
-  reading at a position works. Use another provider if the application writes at positions.
-- The `parley` provider logs in with ssh-agent (`auth=Agent`) too. On macOS and Linux that needs Java 16.
+- With JSch, random access writing no longer goes through a MINA connection: a provider's limits are its
+  own, and the jsch provider now refuses a write at a position (see parley-files-sftp-jsch).
+- A random access stream asks its provider before the first write (`SftpFile.write` with no bytes), so a
+  file opened read-only, or a provider that can't write at a position, fails that write rather than a
+  later save.
 
 ### Added
+
+- **The provider test suite**, as parley-files-sftp's tests jar: a provider project runs it with
+  surefire's `dependenciesToScan` and names what its library can't do in `parley.sftp.test.unsupported`.
+  See the README, "Testing a provider".
 
 - `bufferSize` (also `parley.sftp.bufferSize`; within 1 KB and 16 MB) is another name for `chunkSize`, and a
   stream can be opened with its own (`StreamOption.BUFFER_SIZE` or `CHUNK_SIZE`). A random access stream

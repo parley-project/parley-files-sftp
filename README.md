@@ -28,9 +28,11 @@ Each provider depends on `parley-files-sftp`, so that one dependency brings both
 
 | Artifact | Name | Library |
 |---|---|---|
-| `parley-files-sftp-parley` | `parley` | [parley-ssh](https://github.com/parley-project/parley-ssh), Parley's own SSH library: no third party code |
-| `parley-files-sftp-jsch` | `jsch` | [JSch, maintained fork](https://github.com/mwiede/jsch) (`com.github.mwiede:jsch`). **Can't write at a position**: see [its README](parley-files-sftp-jsch/README.md) |
-| `parley-files-sftp-mina` | `mina` | [Apache MINA SSHD](https://mina.apache.org/sshd-project/) |
+| [`parley-files-sftp-parley`](https://github.com/parley-project/parley-files-sftp-parley) | `parley` | [parley-ssh](https://github.com/parley-project/parley-ssh), Parley's own SSH library: no third party code |
+| [`parley-files-sftp-jsch`](https://github.com/parley-project/parley-files-sftp-jsch) | `jsch` | [JSch, maintained fork](https://github.com/mwiede/jsch) (`com.github.mwiede:jsch`). **Can't write at a position** (see its README) |
+| [`parley-files-sftp-mina`](https://github.com/parley-project/parley-files-sftp-mina) | `mina` | [Apache MINA SSHD](https://mina.apache.org/sshd-project/). **Can't log in with an ssh-agent** (see its README) |
+
+Each is a project of its own, released on its own.
 
 A provider is available when its jar is on the class path. Which one a factory uses:
 
@@ -65,7 +67,8 @@ A factory's own setting wins over the system property. All providers behave the 
 
 **A provider's limits are its own.** A provider documents what its library can't do and throws an
 `IOException` when an application tries it. JSch, for example, can't write at a position, so with the
-`jsch` provider writing to a random access stream throws (see its README).
+`jsch` provider writing to a random access stream throws; MINA's provider can't log in with an
+ssh-agent. Their READMEs say so.
 
 **Java 11 to 14.** parley-ssh uses the JDK's Ed25519, which arrived in Java 15, and reaches an ssh-agent on
 macOS and Linux through Unix domain sockets, which arrived in Java 16. On older Java, use JSch for those
@@ -89,8 +92,52 @@ the class (it needs a public no-argument constructor), or call `SshProviders.reg
 time. Something the library can't do is the provider's to document and to refuse with an
 `IOException` when it is tried (as the JSch provider does for writing at a position), not something to
 work around. Errors are `IOException`s: `NoSuchFileException` for a missing file and `AccessDeniedException`
-for a refused permission (see `SftpChannel`), so the FileSource behaves the same whatever the library. The three providers here are written the same way and
-are the examples to follow; `parley-files-sftp-tests` runs each of them against the same servers.
+for a refused permission (see `SftpChannel`), so the FileSource behaves the same whatever the library.
+parley-files-sftp-parley, -jsch and -mina are written the same way and are the examples to follow.
+
+## Testing a provider
+
+parley-files-sftp's tests jar is the provider test suite: about 230 tests of the whole FileSource
+through the provider on the class path, against an embedded SSH server (or OpenSSH, see below). A
+provider project runs it with its own tests:
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+                <dependenciesToScan>
+                    <dependency>us.bringardner.parley:parley-files-sftp</dependency>
+                </dependenciesToScan>
+                <!-- only if the library can't do something: see below -->
+                <systemPropertyVariables>
+                    <parley.sftp.test.unsupported>writeAtPosition</parley.sftp.test.unsupported>
+                </systemPropertyVariables>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+
+<dependencies>
+    <dependency>
+        <groupId>us.bringardner.parley</groupId>
+        <artifactId>parley-files-sftp</artifactId>
+        <version>1.0.0</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+    </dependency>
+    <!-- and the suite's own test dependencies, which a test-jar doesn't pass on: parley-files'
+         test-jar, junit-jupiter, the Maverick server (maverick-synergy-server,
+         maverick-virtual-session, maverick-virtual-filesystem), parley-ssh (for the ssh-agent
+         test's server) and, for Windows, org.apache.sshd:sshd-sftp. See parley-files-sftp-jsch's pom. -->
+</dependencies>
+```
+
+The provider must be the only one on the test class path. A library that can't do something names it
+in `parley.sftp.test.unsupported` (comma separated): `writeAtPosition`, `agentLogin`. The suite skips
+those tests, and the provider's own tests should check that it refuses them with a clear `IOException`.
 
 ## Other connection properties
 
@@ -133,9 +180,8 @@ Set it per factory with `setAttributeCacheTtl(millis)` or the `attributeCacheTtl
 
 ## Testing
 
-`mvn package` builds every module and runs all the tests. Which SSH server the tests talk to is chosen once per run with
-`-Dparley.sftp.test.server`. They are in the `parley-files-sftp-tests` module, which runs every provider and
-isn't published:
+`mvn package` in a provider project runs the suite and that project's own tests. Which SSH server the tests talk to is chosen once per run with
+`-Dparley.sftp.test.server`, in any project that runs the suite:
 
 | Value | Server |
 |---|---|
@@ -146,9 +192,8 @@ isn't published:
 Tests that need a real OpenSSH server (links, Unix permissions, the remote user, shell commands, the
 channel limit) are skipped on the embedded server.
 
-Most tests are parameterized to run with every provider; the others use the default, which can be set for
-a run with `-Dparley.sftp.implementation=jsch`, `mina` or `parley`. `parley-files-sftp-jsch` has a test of
-its own with JSch as the only provider.
+The suite tests the one provider on the class path. parley-files-sftp itself has none, so here only the
+provider registry's tests run; the suite runs in each provider project.
 
 A few tests start their own embedded servers on fixed ports (for example 2224), so they can clash on
 a machine that runs several builds at once. Add `-Dsurefire.timeout=540` so a hung test fails the run

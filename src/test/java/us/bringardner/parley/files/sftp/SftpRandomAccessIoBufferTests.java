@@ -13,6 +13,8 @@ public class SftpRandomAccessIoBufferTests extends FileSourceRandomAccessIoBuffe
 
 	@BeforeAll
 	public static void setUp() throws IOException {
+		// these shared tests write at positions
+		TestServer.assumeSupported(TestServer.WRITE_AT_POSITION);
 		remoteTestFileDirPath = "SftpRandomAccessIoBufferTests";
 		SftpFileSourceFactory sftp = TestServer.connect(null);
 		//  use a small chunk size to generate lot's of activity
