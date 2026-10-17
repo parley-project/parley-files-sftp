@@ -1,6 +1,6 @@
 # Changelog
 
-## parley-files-sftp 1.0.0 (2026-10-16)
+## parley-files-sftp 1.0.0 (2026-10-17)
 
 BjlFileSystemSftp (`us.bringardner:bjl_file_system_sftp` 1.0.0-SNAPSHOT) is now **parley-files-sftp**,
 part of the Parley library family.
@@ -22,6 +22,21 @@ part of the Parley library family.
   "Private Key File" or "Private Key") says which credential a form asks for; it's optional when
   connecting (worked out from the credentials set) and `getConnectProperties()` includes it.
 - `listFiles(ProgressMonitor)` is now `listFiles(FileSourceProgress)`.
+- **The SSH library is a provider on the class path.** `parley-files-sftp` no longer includes any SSH
+  library; add a provider: `parley-files-sftp-parley` (parley-ssh), `parley-files-sftp-jsch` or
+  `parley-files-sftp-mina`. Each brings `parley-files-sftp` with it. Providers are found with
+  `ServiceLoader` (or `SshProviders.register`), and anyone can write one against the new
+  `us.bringardner.parley.files.sftp.spi` package (it was `sftp.client`).
+- **parley is the default.** With no `implementation` set, parley-ssh's provider is used if it is on the
+  class path, else the only provider there; with several and none named, connecting fails and asks for a
+  name. (The default was JSch.)
+- The providers moved: `sftp.client.parley`, `.jsch` and `.mina` are now `sftp.parley`, `sftp.jsch` and
+  `sftp.mina`, each in its own artifact.
+- The provider API: `SshSettings` and `SshConnection.ExecResult` have getters instead of public fields;
+  `SftpAttributes` gives user and group ids and times as `long` (SFTP sends them unsigned, so times
+  after 2038 stay right), and `SftpChannel.chown`, `chgrp`, `setModifiedTime` and `setAccessTime` take
+  `long`; `SshProvider` has `getDescription()` and `canWriteAtOffset()`.
+- `setImplementation` accepts any name; connecting fails, listing the providers there, if none has it.
 
 ### Changed (no code change needed)
 
@@ -31,6 +46,9 @@ part of the Parley library family.
   `bjl.sftp.implementation` and `bjl.sftp.attributeCacheTtl` are still read when the new ones aren't
   set. The test-only `bjl.sftp.test.server` is now `parley.sftp.test.server`.
 - `SftpLegacyNamesTest` checks that the old names keep working.
+- With JSch, random access that can write goes through another provider that can write at a position
+  (parley's first; it was MINA), and is refused, with a message that says what to add, if there is none.
+- The `parley` provider logs in with ssh-agent (`auth=Agent`) too. On macOS and Linux that needs Java 16.
 
 ### Added
 
