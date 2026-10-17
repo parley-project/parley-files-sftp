@@ -10,7 +10,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
 
 /**
  * BJL-12: the canonical path rules, against a made-up server tree, so relative link

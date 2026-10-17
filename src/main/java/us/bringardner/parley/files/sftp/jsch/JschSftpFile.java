@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.jsch;
+package us.bringardner.parley.files.sftp.jsch;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,7 +8,7 @@ import java.nio.file.NoSuchFileException;
 
 import com.jcraft.jsch.ChannelSftp;
 
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 
 /**
  * Positional reads and writes with JSch's public API, which has no

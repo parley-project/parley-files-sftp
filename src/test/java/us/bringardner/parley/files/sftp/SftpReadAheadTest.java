@@ -23,8 +23,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.IRandomAccessStream;
 import us.bringardner.parley.files.ISeekableInputStream;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 
 /**
  * Read-ahead for random access (batch 12): a sequential pass sends its read

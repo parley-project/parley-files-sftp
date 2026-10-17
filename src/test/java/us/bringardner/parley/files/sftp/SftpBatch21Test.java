@@ -24,9 +24,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SftpEntry;
-import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpEntry;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
 
 /**
  * Batch 21: mkdirs when another program makes the directory meanwhile, a

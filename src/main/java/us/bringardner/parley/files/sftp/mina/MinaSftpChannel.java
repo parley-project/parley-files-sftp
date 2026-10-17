@@ -1,6 +1,6 @@
-package us.bringardner.parley.files.sftp.client.mina;
+package us.bringardner.parley.files.sftp.mina;
 
-import us.bringardner.parley.files.sftp.client.AbstractSftpChannel;
+import us.bringardner.parley.files.sftp.spi.AbstractSftpChannel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -23,9 +23,9 @@ import org.apache.sshd.sftp.client.impl.SftpInputStreamAsync;
 import org.apache.sshd.sftp.common.SftpConstants;
 import org.apache.sshd.sftp.common.SftpException;
 
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpEntry;
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpEntry;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 import us.bringardner.parley.io.IoUtils;
 
 /** SFTP through Apache MINA SSHD's SftpClient. */

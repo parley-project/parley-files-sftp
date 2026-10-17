@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.mina;
+package us.bringardner.parley.files.sftp.mina;
 
 import java.io.IOException;
 

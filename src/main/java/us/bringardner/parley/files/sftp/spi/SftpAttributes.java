@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client;
+package us.bringardner.parley.files.sftp.spi;
 
 /**
  * File attributes as SFTP version 3 reports them. The accessor names match

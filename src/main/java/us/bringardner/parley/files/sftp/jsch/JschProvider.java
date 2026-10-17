@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.jsch;
+package us.bringardner.parley.files.sftp.jsch;
 
 import java.nio.charset.StandardCharsets;
 import java.io.IOException;
@@ -14,10 +14,10 @@ import com.jcraft.jsch.WindowsSSHAgentConnector;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
-import us.bringardner.parley.files.sftp.client.SshConnection;
-import us.bringardner.parley.files.sftp.client.SshProvider;
-import us.bringardner.parley.files.sftp.client.SshProviders;
-import us.bringardner.parley.files.sftp.client.SshSettings;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SshProvider;
+import us.bringardner.parley.files.sftp.spi.SshProviders;
+import us.bringardner.parley.files.sftp.spi.SshSettings;
 
 /** SSH through JSch (the maintained com.github.mwiede fork, or the original 0.1.55). */
 public class JschProvider implements SshProvider {

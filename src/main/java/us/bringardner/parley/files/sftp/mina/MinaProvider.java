@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.mina;
+package us.bringardner.parley.files.sftp.mina;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -20,10 +20,10 @@ import org.apache.sshd.common.SshException;
 import org.apache.sshd.common.util.security.SecurityUtils;
 import org.apache.sshd.core.CoreModuleProperties;
 
-import us.bringardner.parley.files.sftp.client.SshConnection;
-import us.bringardner.parley.files.sftp.client.SshProvider;
-import us.bringardner.parley.files.sftp.client.SshProviders;
-import us.bringardner.parley.files.sftp.client.SshSettings;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SshProvider;
+import us.bringardner.parley.files.sftp.spi.SshProviders;
+import us.bringardner.parley.files.sftp.spi.SshSettings;
 
 /** SSH through Apache MINA SSHD. */
 public class MinaProvider implements SshProvider {

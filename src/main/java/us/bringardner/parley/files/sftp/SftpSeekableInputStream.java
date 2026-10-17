@@ -6,9 +6,9 @@ import java.io.InputStream;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.ISeekableInputStream;
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 
 /**
  * A read-only stream that can seek, over an SFTP file. Behaves like a

@@ -1,10 +1,10 @@
-package us.bringardner.parley.files.sftp.client.jsch;
+package us.bringardner.parley.files.sftp.jsch;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
 
 /** Reaches into the package-private JSch classes, for tests in other packages. */
 public final class JschTestAccess {

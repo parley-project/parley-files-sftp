@@ -30,11 +30,11 @@ import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceUser;
 import us.bringardner.parley.files.IRandomAccessStream;
 import us.bringardner.parley.files.ISeekableInputStream;
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SftpEntry;
-import us.bringardner.parley.files.sftp.client.SftpFile;
-import us.bringardner.parley.files.sftp.client.jsch.JschTestAccess;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpEntry;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
+import us.bringardner.parley.files.sftp.jsch.JschTestAccess;
 
 /**
  * Batch 17: a time limit that holds for JSch commands, fewer round trips,

@@ -24,7 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
 
 /**
  * Batch 18: connecting and closing don't hold the JVM-wide sessions lock,

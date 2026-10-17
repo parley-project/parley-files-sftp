@@ -1,9 +1,9 @@
-package us.bringardner.parley.files.sftp.client;
+package us.bringardner.parley.files.sftp.spi;
 
 import java.util.Locale;
 
-import us.bringardner.parley.files.sftp.client.jsch.JschProvider;
-import us.bringardner.parley.files.sftp.client.mina.MinaProvider;
+import us.bringardner.parley.files.sftp.jsch.JschProvider;
+import us.bringardner.parley.files.sftp.mina.MinaProvider;
 
 /**
  * Chooses the SSH library at run time.
@@ -88,7 +88,7 @@ public final class SshProviders {
 		switch (canonicalName(name)) {
 		case JSCH: return new JschProvider();
 		case MINA: return new MinaProvider();
-		case PARLEY: return new us.bringardner.parley.files.sftp.client.parley.ParleyProvider();
+		case PARLEY: return new us.bringardner.parley.files.sftp.parley.ParleyProvider();
 		default:
 			throw new IllegalArgumentException("Unknown SFTP implementation '"+name+"'; use "+JSCH+", "+MINA+" or "+PARLEY);
 		}

@@ -14,7 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
 
 /**
  * Batch 16: createNewFile never empties an existing file, renameTo stays on

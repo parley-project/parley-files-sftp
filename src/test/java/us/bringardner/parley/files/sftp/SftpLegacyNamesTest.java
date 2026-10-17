@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.files.sftp.client.SshProviders;
-import us.bringardner.parley.files.sftp.client.parley.ParleyProvider;
+import us.bringardner.parley.files.sftp.spi.SshProviders;
+import us.bringardner.parley.files.sftp.parley.ParleyProvider;
 
 /**
  * The move to Parley renamed the "bjl" SSH library to "parley" and the bjl.sftp.* system

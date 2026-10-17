@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client;
+package us.bringardner.parley.files.sftp.spi;
 
 /**
  * Everything needed to open an SSH connection. Implementations read these

@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.IRandomAccessStream;
-import us.bringardner.parley.files.sftp.client.SshProviders;
+import us.bringardner.parley.files.sftp.spi.SshProviders;
 import us.bringardner.parley.ssh.client.SshAgent;
 import us.bringardner.parley.ssh.server.AuthorizedKeysAuthenticator;
 import us.bringardner.parley.ssh.server.HostKeyProviders;

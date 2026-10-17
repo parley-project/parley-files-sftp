@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.parley;
+package us.bringardner.parley.files.sftp.parley;
 
 import java.io.File;
 import java.io.IOException;
@@ -7,10 +7,10 @@ import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
 
-import us.bringardner.parley.files.sftp.client.SshConnection;
-import us.bringardner.parley.files.sftp.client.SshProvider;
-import us.bringardner.parley.files.sftp.client.SshProviders;
-import us.bringardner.parley.files.sftp.client.SshSettings;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SshProvider;
+import us.bringardner.parley.files.sftp.spi.SshProviders;
+import us.bringardner.parley.files.sftp.spi.SshSettings;
 import us.bringardner.parley.ssh.SshConstants;
 import us.bringardner.parley.ssh.SshException;
 import us.bringardner.parley.ssh.client.ClientSession;

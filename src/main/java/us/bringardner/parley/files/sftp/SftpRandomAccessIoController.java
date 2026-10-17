@@ -35,9 +35,9 @@ import java.util.Arrays;
 
 import us.bringardner.parley.files.AbstractRandomAccessIoController;
 import us.bringardner.parley.files.FileSource;
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 
 /**
  * Random access to an SFTP file in chunks of the factory's chunk size. Uses

@@ -1,9 +1,9 @@
-package us.bringardner.parley.files.sftp.client.parley;
+package us.bringardner.parley.files.sftp.parley;
 
 import java.io.IOException;
 
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
 import us.bringardner.parley.ssh.client.ClientSession;
 import us.bringardner.parley.ssh.client.SshClient;
 import us.bringardner.parley.ssh.sftp.SftpClient;

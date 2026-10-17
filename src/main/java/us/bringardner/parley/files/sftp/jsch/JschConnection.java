@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.jsch;
+package us.bringardner.parley.files.sftp.jsch;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,8 +15,8 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
 
 class JschConnection implements SshConnection {
 

@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.mina;
+package us.bringardner.parley.files.sftp.mina;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,8 +15,8 @@ import org.apache.sshd.sftp.client.SftpClient;
 import org.apache.sshd.sftp.client.SftpClientFactory;
 import org.apache.sshd.sftp.client.SftpVersionSelector;
 
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
 
 class MinaConnection implements SshConnection {
 

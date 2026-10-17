@@ -26,7 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceRandomAccessStream;
 import us.bringardner.parley.files.IRandomAccessStream;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
 
 /**
  * Batch 20: random access that can write goes through MINA even when the

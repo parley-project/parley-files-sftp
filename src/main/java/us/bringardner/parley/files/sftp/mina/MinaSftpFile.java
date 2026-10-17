@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.mina;
+package us.bringardner.parley.files.sftp.mina;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
@@ -9,7 +9,7 @@ import org.apache.sshd.sftp.client.impl.AbstractSftpClient;
 import org.apache.sshd.sftp.client.impl.SftpInputStreamAsync;
 
 import us.bringardner.parley.io.IoUtils;
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 
 /**
  * Positional reads and writes on an open MINA handle.

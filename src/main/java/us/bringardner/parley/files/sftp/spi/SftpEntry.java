@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client;
+package us.bringardner.parley.files.sftp.spi;
 
 /** One entry of a directory listing. */
 public final class SftpEntry {

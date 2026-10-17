@@ -35,7 +35,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.IRandomAccessStream;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
 
 /**
  * One test per bug fixed in the SFTP review (batches 1 to 5), so none of

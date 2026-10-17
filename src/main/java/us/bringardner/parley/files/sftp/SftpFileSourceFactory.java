@@ -48,14 +48,14 @@ import us.bringardner.parley.files.ConnectionSetting;
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
 import us.bringardner.parley.files.FileSourceUser;
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SftpEntry;
-import us.bringardner.parley.files.sftp.client.SshConnection;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpEntry;
+import us.bringardner.parley.files.sftp.spi.SshConnection;
 import us.bringardner.parley.files.credentials.CredentialRef;
-import us.bringardner.parley.files.sftp.client.SshProvider;
-import us.bringardner.parley.files.sftp.client.SshProviders;
-import us.bringardner.parley.files.sftp.client.SshSettings;
+import us.bringardner.parley.files.sftp.spi.SshProvider;
+import us.bringardner.parley.files.sftp.spi.SshProviders;
+import us.bringardner.parley.files.sftp.spi.SshSettings;
 import us.bringardner.parley.core.util.Hex;
 
 /**

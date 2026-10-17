@@ -1,4 +1,4 @@
-package us.bringardner.parley.files.sftp.client.jsch;
+package us.bringardner.parley.files.sftp.jsch;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -15,10 +15,10 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
-import us.bringardner.parley.files.sftp.client.SftpAttributes;
-import us.bringardner.parley.files.sftp.client.SftpChannel;
-import us.bringardner.parley.files.sftp.client.SftpEntry;
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpAttributes;
+import us.bringardner.parley.files.sftp.spi.SftpChannel;
+import us.bringardner.parley.files.sftp.spi.SftpEntry;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 
 /**
  * SFTP through JSch's public ChannelSftp API only; no copied or patched JSch

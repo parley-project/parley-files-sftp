@@ -1,9 +1,9 @@
-package us.bringardner.parley.files.sftp.client.parley;
+package us.bringardner.parley.files.sftp.parley;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 
-import us.bringardner.parley.files.sftp.client.SftpFile;
+import us.bringardner.parley.files.sftp.spi.SftpFile;
 import us.bringardner.parley.ssh.sftp.SftpAttrs;
 import us.bringardner.parley.ssh.sftp.SftpHandle;
 import us.bringardner.parley.ssh.sftp.SftpInputStream;

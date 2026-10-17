@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.files.credentials.CredentialException;
 import us.bringardner.parley.files.credentials.Credentials;
 import us.bringardner.parley.files.credentials.EnvCredentialProvider;
-import us.bringardner.parley.files.sftp.client.SshProviders;
+import us.bringardner.parley.files.sftp.spi.SshProviders;
 
 /**
  * The password (and a pasted key) may be references (@env:..., @prompt:...), resolved only to
