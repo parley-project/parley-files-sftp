@@ -105,13 +105,23 @@ public class SftpCredentialReferenceTest {
 		assertTrue(e.getMessage().contains("SSH_AUTH_SOCK"), e.getMessage());
 	}
 
-	@ParameterizedTest
-	@ValueSource(strings = {SshProviders.MINA, SshProviders.PARLEY})
-	public void librariesWithoutAgentSupportSaySo(String implementation) throws IOException {
+	@Test
+	public void minaWithoutAgentSupportSaysSo() throws IOException {
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
-		Properties p = props(implementation, "");
+		Properties p = props(SshProviders.MINA, "");
 		p.setProperty(SftpFileSourceFactory.PROP_AUTH, SftpFileSourceFactory.AUTH_AGENT);
 		IOException e = assertThrows(IOException.class, () -> f.connect(p));
-		assertTrue(e.getMessage().contains("ssh-agent isn't supported by the "+implementation), e.getMessage());
+		assertTrue(e.getMessage().contains("ssh-agent isn't supported by the mina"), e.getMessage());
+	}
+
+	/** parley logs in with the agent too (SftpAgentLoginTest); without one it says why. */
+	@Test
+	public void parleyWithNoAgentRunningSaysSo() throws IOException {
+		assumeTrue(System.getenv("SSH_AUTH_SOCK") == null && !System.getProperty("os.name").startsWith("Windows"));
+		SftpFileSourceFactory f = new SftpFileSourceFactory();
+		Properties p = props(SshProviders.PARLEY, "");
+		p.setProperty(SftpFileSourceFactory.PROP_AUTH, SftpFileSourceFactory.AUTH_AGENT);
+		IOException e = assertThrows(IOException.class, () -> f.connect(p));
+		assertTrue(e.getMessage().contains("ssh-agent"), e.getMessage());
 	}
 }

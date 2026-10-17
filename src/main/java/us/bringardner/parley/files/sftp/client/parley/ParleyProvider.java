@@ -20,6 +20,7 @@ import us.bringardner.parley.ssh.client.KeyboardInteractiveAuth;
 import us.bringardner.parley.ssh.client.KnownHosts;
 import us.bringardner.parley.ssh.client.PasswordAuth;
 import us.bringardner.parley.ssh.client.PublicKeyAuth;
+import us.bringardner.parley.ssh.client.SshAgent;
 import us.bringardner.parley.ssh.client.SshClient;
 import us.bringardner.parley.ssh.keys.SshKeyLoader;
 
@@ -35,9 +36,6 @@ public class ParleyProvider implements SshProvider {
 
 	@Override
 	public SshConnection connect(SshSettings s) throws IOException {
-		if( s.useAgent ) {
-			throw new IOException("Logging in with ssh-agent isn't supported by the parley SSH library yet; use implementation=jsch");
-		}
 		// One client per connection: the host-key policy and keepalive are set on the client
 		SshClient client = new SshClient();
 		boolean ok = false;
@@ -63,16 +61,23 @@ public class ParleyProvider implements SshProvider {
 			try {
 				session.setAuthTimeout(s.connectTimeoutMs);
 				session.setChannelTimeout(s.connectTimeoutMs);
-				List<IClientAuthMethod> methods = new ArrayList<IClientAuthMethod>();
-				List<KeyPair> keys = loadKeys(s);
-				if( !keys.isEmpty() ) {
-					methods.add(new PublicKeyAuth(keys));
+				if( s.useAgent ) {
+					// only the agent's keys, as with JSch: no password or key file
+					try (SshAgent agent = connectAgent()) {
+						session.authenticateAndWait(s.user, PublicKeyAuth.fromAgent(agent));
+					}
+				} else {
+					List<IClientAuthMethod> methods = new ArrayList<IClientAuthMethod>();
+					List<KeyPair> keys = loadKeys(s);
+					if( !keys.isEmpty() ) {
+						methods.add(new PublicKeyAuth(keys));
+					}
+					if( s.password != null ) {
+						methods.add(new PasswordAuth(s.password));
+						methods.add(KeyboardInteractiveAuth.password(s.password.toCharArray()));
+					}
+					session.authenticateAndWait(s.user, methods.toArray(new IClientAuthMethod[0]));
 				}
-				if( s.password != null ) {
-					methods.add(new PasswordAuth(s.password));
-					methods.add(KeyboardInteractiveAuth.password(s.password.toCharArray()));
-				}
-				session.authenticateAndWait(s.user, methods.toArray(new IClientAuthMethod[0]));
 			} catch (IOException | RuntimeException e) {
 				session.close();
 				throw e;
@@ -84,6 +89,21 @@ public class ParleyProvider implements SshProvider {
 				client.close();
 			}
 		}
+	}
+
+	/**
+	 * The user's ssh-agent (SSH_AUTH_SOCK, OpenSSH's Windows agent or Pageant). On macOS and
+	 * Linux this needs Java 16 or later (Unix domain sockets).
+	 */
+	private static SshAgent connectAgent() throws IOException {
+		if( !SshAgent.isSupported() ) {
+			throw new IOException("Logging in with ssh-agent through parley-ssh needs Java 16 or later on this system"
+					+" (Unix domain sockets); use implementation=jsch");
+		}
+		if( !SshAgent.isAvailable() ) {
+			throw new IOException("No ssh-agent found (SSH_AUTH_SOCK isn't set, and no Windows agent is running)");
+		}
+		return SshAgent.connect();
 	}
 
 	private static List<KeyPair> loadKeys(SshSettings s) throws IOException {
