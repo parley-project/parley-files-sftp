@@ -49,8 +49,6 @@ final class TestServer {
 	static final int LOCAL_PORT = 22;
 
 	private static SshServer embedded;
-	/** The embedded server on Windows (see startEmbeddedMina). */
-	private static org.apache.sshd.server.SshServer embeddedMina;
 	private static boolean embeddedStarted;
 	private static int embeddedPort;
 	/** The resolved choice; null until first asked. */
@@ -193,36 +191,9 @@ final class TestServer {
 		embeddedStarted = true;
 	}
 
-	/**
-	 * The embedded server on Windows. Maverick's file factory can't be used there: it strips the
-	 * backslashes from its own home path ("C:UsersX...home/a.txt is not a valid file path"), and
-	 * closes the connection when it is given the real path. Apache MINA's SFTP server, whose virtual
-	 * file system is rooted in the same directory, works.
-	 */
+	/** The embedded server on Windows: MINA's, in a class of its own so other systems run without MINA. */
 	private static void startEmbeddedMina(File home) throws IOException {
-		try {
-			java.security.KeyPairGenerator g = java.security.KeyPairGenerator.getInstance("EC");
-			g.initialize(new java.security.spec.ECGenParameterSpec("secp256r1"));
-			org.apache.sshd.server.SshServer server = org.apache.sshd.server.SshServer.setUpDefaultServer();
-			server.setHost(InetAddress.getLoopbackAddress().getHostAddress());
-			server.setPort(0);
-			server.setKeyPairProvider(org.apache.sshd.common.keyprovider.KeyPairProvider.wrap(g.generateKeyPair()));
-			server.setPasswordAuthenticator((user, password, session) -> USER.equals(user) && PASSWORD.equals(password));
-			server.setSubsystemFactories(java.util.Collections.singletonList(new org.apache.sshd.sftp.server.SftpSubsystemFactory()));
-			server.setFileSystemFactory(new org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory(home.toPath()));
-			server.start();
-			embeddedPort = server.getPort();
-			embeddedMina = server;
-		} catch (Exception e) {
-			throw new IOException("Can't start the embedded SSH server: "+e, e);
-		}
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			try {
-				embeddedMina.stop(true);
-			} catch (IOException e) {
-				// shutting down
-			}
-		}, "embedded SSH server shutdown"));
+		embeddedPort = EmbeddedMinaServer.start(home, USER, PASSWORD);
 		embeddedStarted = true;
 	}
 
