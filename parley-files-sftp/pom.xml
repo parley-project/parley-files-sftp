@@ -1,0 +1,42 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>us.bringardner.parley</groupId>
+		<artifactId>parley-files-sftp-parent</artifactId>
+		<version>1.0.0</version>
+	</parent>
+
+	<artifactId>parley-files-sftp</artifactId>
+	<name>Parley Files SFTP</name>
+	<description>A parley-files FileSource implementation for SSH/SFTP servers, found at runtime through
+		ServiceLoader. The SSH library is a provider on the class path: add parley-files-sftp-parley
+		(parley-ssh), parley-files-sftp-jsch or parley-files-sftp-mina, or write one against the
+		us.bringardner.parley.files.sftp.spi package. Formerly us.bringardner:bjl_file_system_sftp.</description>
+
+	<properties>
+		<!-- Written to the jar manifest as Automatic-Module-Name -->
+		<parley.moduleName>us.bringardner.parley.files.sftp</parley.moduleName>
+	</properties>
+
+	<dependencies>
+		<!-- Used directly (Hex), so named here too -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-core</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
+		<!-- Used by the providers (IoUtils) -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-io</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-files</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
+	</dependencies>
+</project>

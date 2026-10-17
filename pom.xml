@@ -1,9 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	child.project.url.inherit.append.path="false">
 	<modelVersion>4.0.0</modelVersion>
-	<!-- License, developer, SCM, URL, Java level and the Maven Central release profile
-	     all come from parley-parent. -->
+	<!-- The parley-files-sftp modules: the FileSource factory with the SSH provider API, and the
+	     providers. License, developer, Java level and the Maven Central release profile come from
+	     parley-parent; the URLs below are this repository's, for every module. -->
 	<parent>
 		<groupId>us.bringardner.parley</groupId>
 		<artifactId>parley-parent</artifactId>
@@ -11,18 +13,39 @@
 		<relativePath>../parley-parent/pom.xml</relativePath>
 	</parent>
 
-	<artifactId>parley-files-sftp</artifactId>
+	<artifactId>parley-files-sftp-parent</artifactId>
 	<version>1.0.0</version>
-	<name>Parley Files SFTP</name>
-	<description>A parley-files FileSource implementation for SSH/SFTP servers, using JSch (default),
-		Apache MINA SSHD or parley-ssh, chosen at run time. Found at runtime through ServiceLoader.
-		Formerly us.bringardner:bjl_file_system_sftp.</description>
+	<packaging>pom</packaging>
+	<name>Parley Files SFTP (parent)</name>
+	<description>The parley-files-sftp modules: an SFTP FileSource whose SSH library is a provider found
+		on the class path (parley-ssh, JSch, Apache MINA SSHD or another).</description>
+	<url>https://github.com/parley-project/parley-files-sftp</url>
+
+	<scm child.scm.connection.inherit.append.path="false"
+		child.scm.developerConnection.inherit.append.path="false"
+		child.scm.url.inherit.append.path="false">
+		<connection>scm:git:https://github.com/parley-project/parley-files-sftp.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/parley-project/parley-files-sftp.git</developerConnection>
+		<url>https://github.com/parley-project/parley-files-sftp/tree/master</url>
+		<tag>HEAD</tag>
+	</scm>
+
+	<issueManagement>
+		<system>GitHub</system>
+		<url>https://github.com/parley-project/parley-files-sftp/issues</url>
+	</issueManagement>
+
+	<modules>
+		<module>parley-files-sftp</module>
+		<module>parley-files-sftp-parley</module>
+		<module>parley-files-sftp-jsch</module>
+		<module>parley-files-sftp-mina</module>
+		<module>parley-files-sftp-tests</module>
+	</modules>
 
 	<properties>
-		<!-- Written to the jar manifest as Automatic-Module-Name -->
-		<parley.moduleName>us.bringardner.parley.files.sftp</parley.moduleName>
+		<parley.version>1.0.0</parley.version>
 	</properties>
-
 
 	<!-- GitHub Packages. Maven Central releases use: mvn -Prelease clean deploy -->
 	<distributionManagement>
@@ -34,9 +57,23 @@
 	</distributionManagement>
 
 	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.sonatype.central</groupId>
+					<artifactId>central-publishing-maven-plugin</artifactId>
+					<configuration>
+						<!-- the cross-provider tests aren't published -->
+						<excludeArtifacts>
+							<excludeArtifact>parley-files-sftp-tests</excludeArtifact>
+						</excludeArtifacts>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 		<plugins>
-			<!-- Attaches the -sources.jar. The version comes from parley-parent; package (not deploy)
-			     so the source jar is attached BEFORE the deploy plugin runs. -->
+			<!-- Attaches each module's -sources.jar. The version comes from parley-parent; package
+			     (not deploy) so the source jar is attached BEFORE the deploy plugin runs. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
@@ -52,95 +89,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
-
-	<dependencies>
-		<dependency>
-			<!-- Parley's own SSH library, the "parley" implementation (was bjl_net_ssh) -->
-			<groupId>us.bringardner.parley</groupId>
-			<artifactId>parley-ssh</artifactId>
-			<version>1.0.0</version>
-		</dependency>
-		<!-- Used directly (Hex), so named here too -->
-		<dependency>
-			<groupId>us.bringardner.parley</groupId>
-			<artifactId>parley-core</artifactId>
-			<version>1.0.0</version>
-		</dependency>
-		<!-- Used directly (IoUtils), so named here too -->
-		<dependency>
-			<groupId>us.bringardner.parley</groupId>
-			<artifactId>parley-io</artifactId>
-			<version>1.0.0</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>us.bringardner.parley</groupId>
-			<artifactId>parley-files</artifactId>
-			<version>1.0.0</version>
-		</dependency>
-		<!-- The shared FileSource test suite -->
-		<dependency>
-			<groupId>us.bringardner.parley</groupId>
-			<artifactId>parley-files</artifactId>
-			<version>1.0.0</version>
-			<type>test-jar</type>
-			<scope>test</scope>
-		</dependency>
-		
-		<!-- SSH libraries. All three are included; which one is used is chosen at run
-		     time with the "implementation" connection property or the system
-		     property parley.sftp.implementation ("jsch", the default, "mina" or "parley").
-		     Random access that writes always goes through MINA (JSch can't write at an offset safely). -->
-
-		<!-- Maintained JSch fork: modern key types and algorithms; same com.jcraft.jsch packages -->
-		<dependency>
-			<groupId>com.github.mwiede</groupId>
-			<artifactId>jsch</artifactId>
-			<version>2.28.7</version>
-		</dependency>
-
-		<!-- Apache MINA SSHD client and SFTP (sshd-core and sshd-common come with it) -->
-		<dependency>
-			<groupId>org.apache.sshd</groupId>
-			<artifactId>sshd-sftp</artifactId>
-			<version>2.19.0</version>
-		</dependency>
-		<!-- Ed25519 keys for MINA SSHD; without it MINA can't read Ed25519 private
-		     keys or known_hosts files that contain Ed25519 entries -->
-		<dependency>
-			<groupId>net.i2p.crypto</groupId>
-			<artifactId>eddsa</artifactId>
-			<version>0.3.0</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.junit.jupiter</groupId>
-			<artifactId>junit-jupiter</artifactId>
-			<version>5.13.4</version>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- SSH servers for the tests -->
-		<dependency>
-			<groupId>com.sshtools</groupId>
-			<artifactId>maverick-synergy-server</artifactId>
-			<version>3.1.2</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.sshtools</groupId>
-			<artifactId>maverick-virtual-session</artifactId>
-			<version>3.1.2</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.sshtools</groupId>
-			<artifactId>maverick-virtual-filesystem</artifactId>
-			<version>3.1.2</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
-
 </project>

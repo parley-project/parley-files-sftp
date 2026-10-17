@@ -1,0 +1,47 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>us.bringardner.parley</groupId>
+		<artifactId>parley-files-sftp-parent</artifactId>
+		<version>1.0.0</version>
+	</parent>
+
+	<artifactId>parley-files-sftp-jsch</artifactId>
+	<name>Parley Files SFTP: JSch</name>
+	<description>The JSch provider for parley-files-sftp (the maintained com.github.mwiede fork). Put it on the class path and choose it with implementation=jsch. JSch can't write at a position, so random access writing needs another provider that can (such as parley-files-sftp-parley).</description>
+
+	<properties>
+		<!-- Written to the jar manifest as Automatic-Module-Name -->
+		<parley.moduleName>us.bringardner.parley.files.sftp.jsch</parley.moduleName>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-files-sftp</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<!-- Maintained JSch fork: modern key types and algorithms; same com.jcraft.jsch packages -->
+		<dependency>
+			<groupId>com.github.mwiede</groupId>
+			<artifactId>jsch</artifactId>
+			<version>2.28.7</version>
+		</dependency>
+
+		<!-- Tests: a parley-ssh server, so no other provider is on the class path -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-ssh</artifactId>
+			<version>${parley.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.13.4</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>

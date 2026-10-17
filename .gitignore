@@ -1,8 +1,8 @@
 target/
-ssh*
 .DS_*
 # Eclipse
 .classpath
 .project
 .settings/
 /bin/
+*/bin/
