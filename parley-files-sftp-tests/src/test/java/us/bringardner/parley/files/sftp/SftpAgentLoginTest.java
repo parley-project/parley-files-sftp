@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
-import us.bringardner.parley.files.IRandomAccessStream;
 import us.bringardner.parley.files.sftp.spi.SshProviders;
 import us.bringardner.parley.ssh.client.SshAgent;
 import us.bringardner.parley.ssh.server.AuthorizedKeysAuthenticator;
@@ -31,8 +30,7 @@ import us.bringardner.parley.ssh.sftp.server.SftpSubsystemFactory;
 
 /**
  * auth=Agent end to end, against a parley-ssh server that accepts the keys the running ssh-agent
- * holds: the parley implementation logs in through the agent, and so does the parley connection
- * that JSch's random access writes go through. Needs an ssh-agent with at least one key
+ * holds: the parley and jsch providers log in through the agent. Needs an ssh-agent with at least one key
  * (SSH_AUTH_SOCK, as on most developer machines; Java 16 or later on macOS and Linux); skipped
  * otherwise.
  */
@@ -119,19 +117,15 @@ public class SftpAgentLoginTest {
 	}
 
 	@Test
-	void jschRandomAccessWritesGoThroughParleyWithTheAgent() throws IOException {
+	void jschLogsInThroughTheAgent() throws IOException {
 		SftpFileSourceFactory f = connect("jsch");
 		try {
-			FileSource file = f.createFileSource("/jsch.bin");
-			write(file, new byte[10]);
-			try (IRandomAccessStream r = file.getRandomAccessStream("rw")) {
-				r.seek(3);
-				r.write(7);
-			}
-			assertEquals(SshProviders.PARLEY, f.randomAccessCompanion().getEffectiveImplementation());
-			assertEquals(7, read(file)[3], "the byte is where it was written");
+			FileSource file = f.createFileSource("/jsch.txt");
+			write(file, "hello".getBytes(StandardCharsets.US_ASCII));
+			assertEquals("hello", new String(read(file), StandardCharsets.US_ASCII));
 		} finally {
 			f.disConnect();
 		}
 	}
+
 }

@@ -26,16 +26,6 @@ public interface SshProvider {
 	}
 
 	/**
-	 * Whether {@link SftpFile#write(long, byte[], int, int)} writes at the position in one
-	 * request, so a file that changes size meanwhile can't put the data in the wrong place.
-	 * A provider that can't (JSch) says false: random access that writes then goes through
-	 * another provider that can, and is refused if there is none.
-	 */
-	default boolean canWriteAtOffset() {
-		return true;
-	}
-
-	/**
 	 * Connects and authenticates.
 	 *
 	 * @throws IOException if the host can't be reached, the host key is

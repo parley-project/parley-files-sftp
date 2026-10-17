@@ -57,6 +57,9 @@ class ParleySftpFile implements SftpFile {
 		if( !writable ) {
 			throw new AccessDeniedException(path, null, "opened read-only");
 		}
+		if( len == 0 ) {
+			return;
+		}
 		closeReader();   // its read-ahead may now be stale
 		ParleySftpChannel.call(path, () -> {
 			// Several chunks in flight, all answered before this returns

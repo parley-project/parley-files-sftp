@@ -71,18 +71,10 @@ public class SshProvidersTest {
 		try {
 			assertTrue(SshProviders.isAvailable("mylib"));
 			assertSame(mine, SshProviders.get("MYLIB"), "names are compared without regard to case");
-			assertTrue(SshProviders.canWriteAtOffset(null).contains(mine), "the default is true");
 		} finally {
 			SshProviders.unregister("mylib");
 		}
 		assertFalse(SshProviders.isAvailable("mylib"));
-	}
-
-	@Test
-	void writersAtAPositionParleyFirstAndNotJsch() {
-		java.util.List<SshProvider> able = SshProviders.canWriteAtOffset("jsch");
-		assertEquals("parley", able.get(0).getName());
-		assertTrue(able.stream().noneMatch(p -> p.getName().equals("jsch")));
 	}
 
 	@Test

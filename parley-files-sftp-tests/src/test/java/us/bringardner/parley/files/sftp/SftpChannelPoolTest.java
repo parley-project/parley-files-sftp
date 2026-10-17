@@ -103,6 +103,7 @@ public class SftpChannelPoolTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void fiftyStreamsInARowOpenFewChannels(String impl) throws IOException {
+		TestServer.assumeWritesAtAPosition(impl);
 		SftpFileSourceFactory f = factory(impl);
 		FileSource file = file(f, "fifty.txt");
 		write(file, "warm up".getBytes("UTF-8"));
@@ -244,6 +245,7 @@ public class SftpChannelPoolTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void eightThreadsAtOnceGetTheirOwnData(String impl) throws Exception {
+		TestServer.assumeWritesAtAPosition(impl);
 		SftpFileSourceFactory f = factory(impl);
 		ExecutorService pool = Executors.newFixedThreadPool(8);
 		try {

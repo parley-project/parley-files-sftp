@@ -10,7 +10,7 @@
 
 	<artifactId>parley-files-sftp-jsch</artifactId>
 	<name>Parley Files SFTP: JSch</name>
-	<description>The JSch provider for parley-files-sftp (the maintained com.github.mwiede fork). Put it on the class path and choose it with implementation=jsch. JSch can't write at a position, so random access writing needs another provider that can (such as parley-files-sftp-parley).</description>
+	<description>The JSch provider for parley-files-sftp (the maintained com.github.mwiede fork). LIMITATION: JSch cannot write at a position in a file, so writing to a random access stream throws an IOException; everything else, including random access reading, works. Use another provider (parley-files-sftp-parley or -mina) if the application writes at positions.</description>
 
 	<properties>
 		<!-- Written to the jar manifest as Automatic-Module-Name -->

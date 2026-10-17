@@ -2,11 +2,8 @@ package us.bringardner.parley.files.sftp;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -99,6 +96,7 @@ public class SftpBatch20Test {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void writesLandWhereAskedWhileTheSizeChanges(String impl) throws Exception {
+		TestServer.assumeWritesAtAPosition(impl);
 		String path = zeros(impl, "race.bin", 4096);
 		AtomicBoolean stop = new AtomicBoolean();
 		AtomicReference<Throwable> otherFailed = new AtomicReference<>();
@@ -139,29 +137,24 @@ public class SftpBatch20Test {
 	}
 
 	/**
-	 * JSch can't write at a position, so with JSch a writable random-access file is on a
-	 * connection to the same account through a provider that can: parley's, when it is there.
+	 * JSch can't write at a position, so its provider refuses a random access write with an
+	 * IOException that says so, and the file is left as it was.
 	 */
 	@Test
-	void jschWritesGoThroughAProviderThatCan() throws Exception {
+	void jschRefusesAWriteAtAPosition() throws Exception {
 		SftpFileSourceFactory f = own("jsch", null);
 		try {
-			assertNull(f.randomAccessCompanion(), "nothing until it's needed");
-			String path = zeros("jsch", "companion.bin", 10);
+			String path = zeros("jsch", "refused.bin", 10);
+			IOException e;
 			try (IRandomAccessStream r = f.createFileSource(path).getRandomAccessStream("rw")) {
 				r.seek(3);
-				r.write(7);
+				assertEquals(0, r.read(), "reading works");
+				r.seek(3);
+				e = assertThrows(IOException.class, () -> r.write(7), "the write itself fails");
 			}
-			SftpFileSourceFactory m = f.randomAccessCompanion();
-			assertNotNull(m);
-			assertEquals("parley", m.getEffectiveImplementation(), "parley first");
-			assertTrue(m.isConnected());
-			assertTrue(m.channelPool().openedCount() > 0, "its channel was used");
-			assertEquals(7, readAt(path, 3), "the byte is where it was written");
-
-			f.disConnect();
-			assertFalse(m.isConnected(), "disconnected with the factory");
-			assertNull(f.randomAccessCompanion());
+			assertTrue(e.getMessage().contains("can't write at a position"), e.getMessage());
+			assertTrue(e.getMessage().contains("parley-files-sftp-parley"), e.getMessage());
+			assertEquals(0, readAt(path, 3), "nothing was written");
 		} finally {
 			f.disConnect();
 		}
@@ -173,40 +166,19 @@ public class SftpBatch20Test {
 		}
 	}
 
-	/** Read-only random access needs no MINA connection: JSch reads at any position safely. */
+	/** Reading at a position works with JSch. */
 	@Test
-	void jschReadOnlyStaysOnJsch() throws Exception {
+	void jschReadsAtAPosition() throws Exception {
 		SftpFileSourceFactory f = own("jsch", null);
 		try {
 			String path = zeros("jsch", "read-only.bin", 10);
 			try (IRandomAccessStream r = f.createFileSource(path).getRandomAccessStream("r")) {
+				r.seek(5);
 				assertEquals(0, r.read());
 			}
-			assertNull(f.randomAccessCompanion());
 		} finally {
 			f.disConnect();
 		}
 	}
 
-	/** A MINA factory uses itself. */
-	@Test
-	void minaUsesItself() throws IOException {
-		assertSame(mina, mina.randomAccessFactory());
-		assertNull(mina.randomAccessCompanion());
-	}
-
-	/** An explicit session key gets its own key for the companion, so the JSch connection is never shared with it. */
-	@Test
-	void explicitKeyGetsItsOwnCompanionKey() throws Exception {
-		String key = "batch20-explicit-"+System.nanoTime();
-		SftpFileSourceFactory f = own("jsch", key);
-		try {
-			SftpFileSourceFactory m = f.randomAccessFactory();
-			assertNotEquals(f.getSessionKey(), m.getSessionKey());
-			assertEquals(key+"#parley", m.getSessionKey());
-			assertNotEquals(f.getConnection(), m.getConnection());
-		} finally {
-			f.disConnect();
-		}
-	}
 }

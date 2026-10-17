@@ -35,7 +35,7 @@ part of the Parley library family.
 - The provider API: `SshSettings` and `SshConnection.ExecResult` have getters instead of public fields;
   `SftpAttributes` gives user and group ids and times as `long` (SFTP sends them unsigned, so times
   after 2038 stay right), and `SftpChannel.chown`, `chgrp`, `setModifiedTime` and `setAccessTime` take
-  `long`; `SshProvider` has `getDescription()` and `canWriteAtOffset()`.
+  `long`; `SshProvider` has `getDescription()`.
 - `setImplementation` accepts any name; connecting fails, listing the providers there, if none has it.
 
 ### Changed (no code change needed)
@@ -46,8 +46,10 @@ part of the Parley library family.
   `bjl.sftp.implementation` and `bjl.sftp.attributeCacheTtl` are still read when the new ones aren't
   set. The test-only `bjl.sftp.test.server` is now `parley.sftp.test.server`.
 - `SftpLegacyNamesTest` checks that the old names keep working.
-- With JSch, random access that can write goes through another provider that can write at a position
-  (parley's first; it was MINA), and is refused, with a message that says what to add, if there is none.
+- **The jsch provider can't write at a position, and says so.** Writing to a random access stream with it
+  throws an `IOException` at the write (it used to go through a MINA connection to the same account, and
+  before that JSch emulated the write, which could put the data in the wrong place). Its README says so;
+  reading at a position works. Use another provider if the application writes at positions.
 - The `parley` provider logs in with ssh-agent (`auth=Agent`) too. On macOS and Linux that needs Java 16.
 
 ### Added

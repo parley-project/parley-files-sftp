@@ -117,6 +117,14 @@ final class TestServer {
 	}
 
 	/** A factory connected as unittest1 to the server the tests use. */
+	/**
+	 * Skips a test that writes at a position with the jsch provider, which can't (it throws at the
+	 * write; SftpBatch20Test and the jsch module's own test check that).
+	 */
+	static void assumeWritesAtAPosition(String implementation) {
+		assumeTrue(!"jsch".equals(implementation), "the jsch provider can't write at a position");
+	}
+
 	static SftpFileSourceFactory connect(String implementation) throws IOException {
 		return connect(implementation, port());
 	}

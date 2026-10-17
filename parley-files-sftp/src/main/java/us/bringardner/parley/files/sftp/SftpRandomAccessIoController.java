@@ -41,9 +41,9 @@ import us.bringardner.parley.files.sftp.spi.SftpFile;
 
 /**
  * Random access to an SFTP file in chunks of the factory's chunk size. Uses
- * a channel of its own from the pool. When it can write and the factory uses
- * JSch, the channel comes from a MINA connection to the same account (see
- * SftpFileSourceFactory.randomAccessFactory()).
+ * a channel of its own from the pool. Writes go to the provider's
+ * SftpFile.write(position, ...); a provider that can't write at a position
+ * (JSch) throws there.
  */
 public class SftpRandomAccessIoController extends AbstractRandomAccessIoController {
 
@@ -52,6 +52,8 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 	private final int chunkSize;
 	private final SftpChannel channel;
 	private SftpFile handle;
+	/** Set once the provider has accepted writing to this file (see write(long, byte)). */
+	private boolean writeAccepted;
 	/** Opened with mode "r": the handle is read-only. */
 	private final boolean readOnly;
 
@@ -66,7 +68,7 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 		super(file);
 		myFactory = (SftpFileSourceFactory) file.getFileSourceFactory();
 		this.chunkSize = myFactory.getChunkSize();
-		channel = myFactory.randomAccessFactory().openSftp();   // it may write: see randomAccessFactory()
+		channel = myFactory.openSftp();
 		readOnly = false;
 	}
 
@@ -99,9 +101,7 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 		myFactory = (SftpFileSourceFactory) file.getFileSourceFactory();
 		this.chunkSize = chunkSize > 0 ? chunkSize : myFactory.getChunkSize();
 		readOnly = mode.equals("r");
-		// Writing goes through MINA even when the factory uses JSch, which
-		// can't write at an offset safely; see randomAccessFactory().
-		channel = readOnly ? myFactory.openSftp() : myFactory.randomAccessFactory().openSftp();
+		channel = myFactory.openSftp();
 		String path = file.getAbsolutePath();
 		try {
 			SftpAttributes a;
@@ -171,6 +171,25 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 		}
 		return got == want ? ret : Arrays.copyOf(ret, got);
 	}
+
+	/**
+	 * Writes are kept in the chunk and sent when it is saved. Before the first one, the
+	 * provider is asked to write nothing at the position, so a file opened read-only, or a
+	 * provider that can't write at a position (JSch), fails this write, not a later save.
+	 */
+	@Override
+	public void write(long pos, byte value) throws IOException {
+		if( !writeAccepted ) {
+			if( readOnly ) {
+				throw new IOException("Opened read-only (mode \"r\")");
+			}
+			getHandle().write(pos, NO_BYTES, 0, 0);
+			writeAccepted = true;
+		}
+		super.write(pos, value);
+	}
+
+	private static final byte[] NO_BYTES = new byte[0];
 
 	@Override
 	protected void writeChunk(Chunk chunk) throws IOException {

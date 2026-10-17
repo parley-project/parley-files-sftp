@@ -163,6 +163,7 @@ public class SftpReadAheadTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void readAfterWriteSeesNewData(String impl) throws IOException {
+		TestServer.assumeWritesAtAPosition(impl);
 		byte[] data = random(BIG, 2);
 		String path = write(impl, "write.bin", data);
 		try (SftpChannel ch = factory(impl).getConnection().openSftp();

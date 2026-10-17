@@ -123,6 +123,7 @@ public class SftpRandomAccessTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void rwCreatesWritesSeeksAndReads(String impl) throws IOException {
+		TestServer.assumeWritesAtAPosition(impl);
 		FileSource f = file(impl, "rw.bin");
 		assertFalse(f.exists());
 		try (IRandomAccessStream r = f.getRandomAccessStream("rw")) {
@@ -150,6 +151,7 @@ public class SftpRandomAccessTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void rwOverwritesInPlace(String impl) throws IOException {
+		TestServer.assumeWritesAtAPosition(impl);
 		FileSource f = write(impl, "patch.txt", "Hello, world!".getBytes("UTF-8"));
 		try (IRandomAccessStream r = f.getRandomAccessStream("rw")) {
 			r.seek(7);
@@ -161,6 +163,7 @@ public class SftpRandomAccessTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void setLengthShrinksAndGrows(String impl) throws IOException {
+		TestServer.assumeWritesAtAPosition(impl);
 		FileSource f = write(impl, "len.bin", data(5000));
 		try (IRandomAccessStream r = f.getRandomAccessStream("rw")) {
 			r.setLength(1234);
@@ -206,6 +209,7 @@ public class SftpRandomAccessTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void randomBinaryMatchesAfterManyWrites(String impl) throws IOException {
+		TestServer.assumeWritesAtAPosition(impl);
 		byte[] expected = new byte[200_000];
 		new Random(42).nextBytes(expected);
 		FileSource f = write(impl, "random.bin", expected);
@@ -314,6 +318,7 @@ public class SftpRandomAccessTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void nioByteChannelReadWrite(String impl) throws IOException {
+		TestServer.assumeWritesAtAPosition(impl);
 		FileSource f = write(impl, "nio.txt", "0123456789".getBytes("UTF-8"));
 		Path p = new FileSourcePath(f);
 		try (SeekableByteChannel ch = Files.newByteChannel(p, EnumSet.of(StandardOpenOption.READ, StandardOpenOption.WRITE))) {

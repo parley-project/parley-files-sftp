@@ -108,6 +108,9 @@ class MinaSftpFile implements SftpFile {
 		if( !writable ) {
 			throw new AccessDeniedException(path, null, "opened read-only");
 		}
+		if( len == 0 ) {
+			return;
+		}
 		closeReader();   // its read-ahead may now be stale
 		nextPosition = -1;
 		MinaSftpChannel.call(path, () -> { channel.sftp.write(handle, position, b, off, len); return null; });

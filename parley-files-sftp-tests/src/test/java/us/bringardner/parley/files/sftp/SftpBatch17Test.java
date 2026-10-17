@@ -226,6 +226,7 @@ public class SftpBatch17Test {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void defaultChunksRoundTrip(String impl) throws Exception {
+		TestServer.assumeWritesAtAPosition(impl);
 		SftpFileSourceFactory f = factory(impl);
 		assertEquals(SftpFileSourceFactory.DEFAULT_CHUNK_SIZE, f.getChunkSize());
 		String d = freshDir(impl, "chunks");

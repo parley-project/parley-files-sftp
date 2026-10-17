@@ -29,7 +29,7 @@ Each provider depends on `parley-files-sftp`, so that one dependency brings both
 | Artifact | Name | Library |
 |---|---|---|
 | `parley-files-sftp-parley` | `parley` | [parley-ssh](https://github.com/parley-project/parley-ssh), Parley's own SSH library: no third party code |
-| `parley-files-sftp-jsch` | `jsch` | [JSch, maintained fork](https://github.com/mwiede/jsch) (`com.github.mwiede:jsch`) |
+| `parley-files-sftp-jsch` | `jsch` | [JSch, maintained fork](https://github.com/mwiede/jsch) (`com.github.mwiede:jsch`). **Can't write at a position**: see [its README](parley-files-sftp-jsch/README.md) |
 | `parley-files-sftp-mina` | `mina` | [Apache MINA SSHD](https://mina.apache.org/sshd-project/) |
 
 A provider is available when its jar is on the class path. Which one a factory uses:
@@ -63,15 +63,13 @@ factory.setConnectionProperties(p);
 A factory's own setting wins over the system property. All providers behave the same through
 `FileSource`.
 
-**Random access writing.** parley-ssh and MINA write at any position in one request. JSch can't do that
-safely (it would put the data in the wrong place if the file changed size meanwhile), so with JSch,
-random access that writes (`rw`, `rws`, `rwd`) goes through another provider on the class path that can
-(parley's first), on a connection to the same account; reading stays on JSch. With JSch alone, opening a
-file for random access writing is refused with a message that says what to add.
+**A provider's limits are its own.** A provider documents what its library can't do and throws an
+`IOException` when an application tries it. JSch, for example, can't write at a position, so with the
+`jsch` provider writing to a random access stream throws (see its README).
 
 **Java 11 to 14.** parley-ssh uses the JDK's Ed25519, which arrived in Java 15, and reaches an ssh-agent on
 macOS and Linux through Unix domain sockets, which arrived in Java 16. On older Java, use JSch for those
-(it still needs another provider for random access writing).
+(if the application doesn't write at positions) or MINA.
 
 ## Writing a provider
 
@@ -80,7 +78,7 @@ and needs nothing but `parley-files-sftp`:
 
 | Type | What it does |
 |---|---|
-| `SshProvider` | Its name, and `connect(SshSettings)`; `canWriteAtOffset()` (default true) says whether `SftpFile.write` writes at a position in one request |
+| `SshProvider` | Its name, and `connect(SshSettings)` |
 | `SshConnection` | One logged-in connection: opens `SftpChannel`s, runs commands |
 | `SftpChannel` | The SFTP requests (`stat`, `list`, `rename`, streams, ...); `AbstractSftpChannel` helps with the details |
 | `SftpFile` | An open file read and written at positions |
@@ -88,7 +86,9 @@ and needs nothing but `parley-files-sftp`:
 
 Register it with a file `META-INF/services/us.bringardner.parley.files.sftp.spi.SshProvider` that names
 the class (it needs a public no-argument constructor), or call `SshProviders.register(provider)` at run
-time. Errors are `IOException`s: `NoSuchFileException` for a missing file and `AccessDeniedException`
+time. Something the library can't do is the provider's to document and to refuse with an
+`IOException` when it is tried (as the JSch provider does for writing at a position), not something to
+work around. Errors are `IOException`s: `NoSuchFileException` for a missing file and `AccessDeniedException`
 for a refused permission (see `SftpChannel`), so the FileSource behaves the same whatever the library. The three providers here are written the same way and
 are the examples to follow; `parley-files-sftp-tests` runs each of them against the same servers.
 

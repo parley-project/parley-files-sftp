@@ -29,7 +29,7 @@ import us.bringardner.parley.ssh.sftp.server.SftpSubsystemFactory;
 /**
  * JSch as the only provider on the class path (this module's tests have no other; the server is
  * parley-ssh's, which registers no provider): it is used without being named, reading and
- * writing work, and random access writing is refused because JSch can't write at a position.
+ * writing work, and a random access write throws, because JSch can't write at a position.
  */
 public class JschAloneTest {
 
@@ -88,18 +88,23 @@ public class JschAloneTest {
 	}
 
 	@Test
-	void randomAccessWritingIsRefused() throws IOException {
+	void writingAtAPositionThrows() throws IOException {
 		SftpFileSourceFactory f = connect();
 		try {
 			FileSource file = f.createFileSource("/b.bin");
 			try (OutputStream out = file.getOutputStream()) {
 				out.write(new byte[10]);
 			}
-			IOException e = assertThrows(IOException.class, () -> file.getRandomAccessStream("rw").close());
-			assertTrue(e.getMessage().contains("needs an SSH provider that can write at a position"), e.getMessage());
+			IOException e;
+			try (IRandomAccessStream r = file.getRandomAccessStream("rw")) {
+				r.seek(3);
+				e = assertThrows(IOException.class, () -> r.write(7), "the write itself fails");
+			}
+			assertTrue(e.getMessage().contains("can't write at a position"), e.getMessage());
 			assertTrue(e.getMessage().contains("parley-files-sftp-parley"), e.getMessage());
 		} finally {
 			f.disConnect();
 		}
 	}
+
 }

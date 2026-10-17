@@ -1,10 +1,8 @@
 package us.bringardner.parley.files.sftp.spi;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
@@ -138,22 +136,6 @@ public final class SshProviders {
 					+"; or add its jar")+".");
 		}
 		return p;
-	}
-
-	/** @return the available providers that can write at a position (parley's first), excluding 'except' */
-	public static List<SshProvider> canWriteAtOffset(String except) {
-		String skip = canonicalName(except);
-		List<SshProvider> ret = new ArrayList<>();
-		for (Map.Entry<String, SshProvider> e : available().entrySet()) {
-			if( e.getValue().canWriteAtOffset() && !e.getKey().equals(skip)) {
-				if( PARLEY.equals(e.getKey())) {
-					ret.add(0, e.getValue());
-				} else {
-					ret.add(e.getValue());
-				}
-			}
-		}
-		return ret;
 	}
 
 	/** The known_hosts file used for host key checking: the setting, else ~/.ssh/known_hosts. */

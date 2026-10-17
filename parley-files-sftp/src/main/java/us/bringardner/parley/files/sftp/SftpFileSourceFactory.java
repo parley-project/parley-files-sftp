@@ -610,89 +610,6 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		return session().pool;
 	}
 
-	/** Guards writeCompanion; not the factory's lock, so a slow connect holds up nothing else. */
-	private final Object randomAccessLock = new SerializableLock();
-
-	/** A lock object that doesn't stop the factory being serialized (a plain Object did). */
-	private static final class SerializableLock implements java.io.Serializable {
-		private static final long serialVersionUID = 1L;
-	}
-	/** See randomAccessFactory(); null until first needed, and after disconnect. */
-	private SftpFileSourceFactory writeCompanion;
-
-	/** The factory randomAccessFactory() made for a provider that can't write at a position, or null; for tests. */
-	SftpFileSourceFactory randomAccessCompanion() {
-		synchronized (randomAccessLock) {
-			return writeCompanion;
-		}
-	}
-
-	/**
-	 * The factory whose channels random access that can write uses: this one when its
-	 * provider can write at a position in one request, else a factory for the same account
-	 * with another provider that can (parley's first), connected on first use and
-	 * disconnected with this one.
-	 * <p>
-	 * JSch can't: its public API has no write at an offset, and JschSftpFile asks the file's
-	 * size and writes at "size + (position - size)", so a size change by anyone else in
-	 * between put the data in the wrong place, silently. Read-only random access and
-	 * everything else stay on this factory's provider. The companion isn't registered as a
-	 * factory session: it's internal.
-	 *
-	 * @throws IOException when no provider that can write at a position is on the class path
-	 *         (random access writing is refused), or none of them can connect
-	 */
-	SftpFileSourceFactory randomAccessFactory() throws IOException {
-		SshProvider own = provider();
-		if( own.canWriteAtOffset()) {
-			return this;
-		}
-		synchronized (randomAccessLock) {
-			if( writeCompanion == null || !writeCompanion.isConnected()) {
-				List<SshProvider> able = SshProviders.canWriteAtOffset(own.getName());
-				if( able.isEmpty()) {
-					throw new IOException("Random access writing (\"rw\") needs an SSH provider that can write at a position;"
-							+" "+own.getName()+" can't do it safely, and no provider that can is on the class path."
-							+" Add one, such as us.bringardner.parley:parley-files-sftp-parley.");
-				}
-				SftpFileSourceFactory m = null;
-				IOException failed = null;
-				for (SshProvider p : able) {
-					try {
-						m = connectCompanion(p.getName());
-						break;
-					} catch (IOException e) {
-						if( failed == null ) {
-							failed = e;
-						} else {
-							failed.addSuppressed(e);
-						}
-					}
-				}
-				if( m == null ) {
-					throw new IOException("Random access writing goes through a provider that can write at a position ("
-							+own.getName()+" can't do it safely), and none could connect to "+getUser()+"@"+getHost()+":"+getPort()
-							+": "+failed.getMessage(), failed);
-				}
-				if( writeCompanion != null ) {
-					writeCompanion.disConnectImpl();   // the dead one
-				}
-				writeCompanion = m;
-			}
-			return writeCompanion;
-		}
-	}
-
-	/** A copy of this factory using provider 'impl', with a session key of its own (never this one's connection), connected. */
-	private SftpFileSourceFactory connectCompanion(String impl) throws IOException {
-		SftpFileSourceFactory m = (SftpFileSourceFactory) createThreadSafeCopy();
-		m.implementation = impl;
-		if( sessionKey != null && !sessionKey.isEmpty()) {
-			m.sessionKey = sessionKey+"#"+impl;
-		}
-		m.connectImpl();
-		return m;
-	}
 
 	/**
 	 * Runs one SFTP call on a channel borrowed from the shared connection's
@@ -1070,14 +987,6 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 
 	@Override
 	protected synchronized void disConnectImpl() {
-		SftpFileSourceFactory companion;
-		synchronized (randomAccessLock) {
-			companion = writeCompanion;
-			writeCompanion = null;
-		}
-		if( companion != null ) {
-			companion.disConnectImpl();
-		}
 		// safe to call twice: the second call finds link.session == null
 		releaseSession(link);
 	}

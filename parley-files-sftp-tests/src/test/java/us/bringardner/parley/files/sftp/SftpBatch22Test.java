@@ -103,6 +103,7 @@ public class SftpBatch22Test {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void knownServerConnectsByDefault(String impl) throws Exception {
+		TestServer.assumeWritesAtAPosition(impl);
 		Path known = Files.createTempFile("known_hosts", "");
 		try {
 			String scanned = keyscan(TestServer.port());

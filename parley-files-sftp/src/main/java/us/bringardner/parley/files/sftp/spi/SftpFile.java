@@ -14,7 +14,15 @@ public interface SftpFile extends Closeable {
 	 */
 	int read(long position, byte[] b, int off, int len) throws IOException;
 
-	/** Writes all 'len' bytes at 'position', extending the file if needed. */
+	/**
+	 * Writes all 'len' bytes at 'position', extending the file if needed. A provider whose
+	 * library can't write at a position must throw an IOException that says so, never write
+	 * the data anywhere else.
+	 * <p>
+	 * 'len' may be 0: nothing is written, but a file opened read-only, or a provider that can't
+	 * write at a position, throws as it would for a real write. A random access stream calls it
+	 * so on its first write, so that write is the one that fails, not a later save.
+	 */
 	void write(long position, byte[] b, int off, int len) throws IOException;
 
 	/** Sets the file's size. */

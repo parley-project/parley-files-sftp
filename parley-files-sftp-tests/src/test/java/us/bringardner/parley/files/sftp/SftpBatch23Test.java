@@ -3,8 +3,6 @@ package us.bringardner.parley.files.sftp;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,16 +52,6 @@ public class SftpBatch23Test {
 		IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> SshProviders.get("putty"));
 		assertTrue(e.getMessage().contains("parley"), e.getMessage());
 		assertEquals(SshProviders.PARLEY, bjl.getEffectiveImplementation());
-	}
-
-	/**
-	 * BJL writes at an offset in one request, like MINA, so random access that can write uses
-	 * the factory's own connection; before, every implementation but MINA got a MINA companion.
-	 */
-	@Test
-	void bjlUsesItselfForRandomAccessWrites() throws IOException {
-		assertSame(bjl, bjl.randomAccessFactory());
-		assertNull(bjl.randomAccessCompanion());
 	}
 
 	private static FileSource dir(String name) throws IOException {

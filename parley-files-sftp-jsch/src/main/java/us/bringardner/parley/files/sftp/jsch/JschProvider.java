@@ -19,7 +19,14 @@ import us.bringardner.parley.files.sftp.spi.SshProvider;
 import us.bringardner.parley.files.sftp.spi.SshProviders;
 import us.bringardner.parley.files.sftp.spi.SshSettings;
 
-/** SSH through JSch (the maintained com.github.mwiede fork, or the original 0.1.55). */
+/**
+ * SSH through JSch (the maintained com.github.mwiede fork, or the original 0.1.55).
+ * <p>
+ * <b>Limitation: no writing at a position.</b> JSch's API has no positional write, so random
+ * access writing (a random access stream opened "rw", "rws" or "rwd" that writes) throws an
+ * IOException at the write. Everything else works, including reading at a position. Use another
+ * provider, such as parley's (parley-files-sftp-parley), if the application writes at positions.
+ */
 public class JschProvider implements SshProvider {
 
 	/** The name that selects it: "jsch". */
@@ -33,12 +40,6 @@ public class JschProvider implements SshProvider {
 	@Override
 	public String getDescription() {
 		return "JSch (com.github.mwiede:jsch)";
-	}
-
-	/** JSch's public API has no write at a position: see JschSftpFile. */
-	@Override
-	public boolean canWriteAtOffset() {
-		return false;
 	}
 
 	@Override

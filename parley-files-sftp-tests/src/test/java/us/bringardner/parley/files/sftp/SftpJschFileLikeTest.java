@@ -7,4 +7,10 @@ public class SftpJschFileLikeTest extends AbstractSftpFileLikeTest {
 	protected String implementation() {
 		return "jsch";
 	}
+
+	/** The shared random access tests write at positions, which the jsch provider can't (it throws). */
+	@Override
+	protected boolean supportsRandomAccess() {
+		return false;
+	}
 }

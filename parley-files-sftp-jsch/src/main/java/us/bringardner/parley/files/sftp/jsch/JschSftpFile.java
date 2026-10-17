@@ -2,9 +2,7 @@ package us.bringardner.parley.files.sftp.jsch;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.AccessDeniedException;
-import java.nio.file.NoSuchFileException;
 
 import com.jcraft.jsch.ChannelSftp;
 
@@ -17,12 +15,12 @@ import us.bringardner.parley.files.sftp.spi.SftpFile;
  * <li>Reads use get(path, monitor, offset). The stream is kept open while
  * reads move forward and reopened after a seek (one round trip) or at the
  * end of the file.</li>
- * <li>Writes use put(path, monitor, RESUME, offset). RESUME opens the file
- * without truncating it and starts at offset + the file's current size, so
- * passing (position - size) writes at 'position'. Each write is an open,
- * the data, and a close.</li>
+ * <li>Writes at a position aren't possible: JSch has no call for it. The
+ * only way to emulate one, put(path, monitor, RESUME, position - size), puts
+ * the data in the wrong place, silently, if the file changes size between
+ * asking its size and writing. So {@link #write} throws instead.</li>
  * </ul>
- * The MINA implementation does both with single positional requests.
+ * Opening for writing, truncating and reading still work.
  */
 class JschSftpFile implements SftpFile {
 
@@ -84,17 +82,11 @@ class JschSftpFile implements SftpFile {
 		if( !writable ) {
 			throw new AccessDeniedException(path, null, "opened read-only");
 		}
-		closeReader();   // its buffered data may now be stale
-		long size;
-		try {
-			size = channel.stat(path).getSize();
-		} catch (NoSuchFileException e) {
-			size = 0;
-		}
-		final long offset = position - size;   // RESUME adds the size back
-		try (OutputStream out = JschSftpChannel.call(path, () -> sftp.put(path, null, ChannelSftp.RESUME, offset))) {
-			out.write(b, off, len);
-		}
+		// also for len 0: a random access stream asks so before its first write
+		throw new IOException("The jsch SSH provider can't write at a position (writing at "+position+" in "+path
+				+"): JSch has no call for it, and emulating one can put the data in the wrong place if the file"
+				+" changes size meanwhile. Use another provider for random access writing, such as parley"
+				+" (us.bringardner.parley:parley-files-sftp-parley, implementation=parley).");
 	}
 
 	@Override

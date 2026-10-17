@@ -127,6 +127,7 @@ public class SftpBatch16Test {
 	@ParameterizedTest
 	@ValueSource(strings = {"jsch", "mina", "parley"})
 	void randomAccessRwKeepsExistingData(String impl) throws Exception {
+		TestServer.assumeWritesAtAPosition(impl);
 		SftpFileSourceFactory f = factory(impl);
 		String d = freshDir(impl, "create-rw");
 		try (var r = f.createFileSource(d+"/new.bin").getRandomAccessStream("rw")) {
