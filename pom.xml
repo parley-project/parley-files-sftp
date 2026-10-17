@@ -1,11 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-	child.project.url.inherit.append.path="false">
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<!-- The parley-files-sftp modules: the FileSource factory with the SSH provider API, and the
-	     providers. License, developer, Java level and the Maven Central release profile come from
-	     parley-parent; the URLs below are this repository's, for every module. -->
+	<!-- License, developer, SCM, URL, Java level and the Maven Central release profile
+	     all come from parley-parent. -->
 	<parent>
 		<groupId>us.bringardner.parley</groupId>
 		<artifactId>parley-parent</artifactId>
@@ -13,37 +11,18 @@
 		<relativePath>../parley-parent/pom.xml</relativePath>
 	</parent>
 
-	<artifactId>parley-files-sftp-parent</artifactId>
+	<artifactId>parley-files-sftp</artifactId>
 	<version>1.0.0</version>
-	<packaging>pom</packaging>
-	<name>Parley Files SFTP (parent)</name>
-	<description>The parley-files-sftp modules: an SFTP FileSource whose SSH library is a provider found
-		on the class path (parley-ssh, JSch, Apache MINA SSHD or another).</description>
-	<url>https://github.com/parley-project/parley-files-sftp</url>
-
-	<scm child.scm.connection.inherit.append.path="false"
-		child.scm.developerConnection.inherit.append.path="false"
-		child.scm.url.inherit.append.path="false">
-		<connection>scm:git:https://github.com/parley-project/parley-files-sftp.git</connection>
-		<developerConnection>scm:git:ssh://git@github.com/parley-project/parley-files-sftp.git</developerConnection>
-		<url>https://github.com/parley-project/parley-files-sftp/tree/master</url>
-		<tag>HEAD</tag>
-	</scm>
-
-	<issueManagement>
-		<system>GitHub</system>
-		<url>https://github.com/parley-project/parley-files-sftp/issues</url>
-	</issueManagement>
-
-	<modules>
-		<module>parley-files-sftp</module>
-		<module>parley-files-sftp-parley</module>
-		<module>parley-files-sftp-jsch</module>
-		<module>parley-files-sftp-mina</module>
-		<module>parley-files-sftp-tests</module>
-	</modules>
+	<name>Parley Files SFTP</name>
+	<description>A parley-files FileSource implementation for SSH/SFTP servers, found at runtime through
+		ServiceLoader. The SSH library is a provider found on the class path: parley-files-sftp-parley
+		(parley-ssh), parley-files-sftp-jsch, parley-files-sftp-mina, or one written against the
+		us.bringardner.parley.files.sftp.spi package. The tests jar is the suite every provider runs.
+		Formerly us.bringardner:bjl_file_system_sftp.</description>
 
 	<properties>
+		<!-- Written to the jar manifest as Automatic-Module-Name -->
+		<parley.moduleName>us.bringardner.parley.files.sftp</parley.moduleName>
 		<parley.version>1.0.0</parley.version>
 	</properties>
 
@@ -57,23 +36,9 @@
 	</distributionManagement>
 
 	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.sonatype.central</groupId>
-					<artifactId>central-publishing-maven-plugin</artifactId>
-					<configuration>
-						<!-- the cross-provider tests aren't published -->
-						<excludeArtifacts>
-							<excludeArtifact>parley-files-sftp-tests</excludeArtifact>
-						</excludeArtifacts>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 		<plugins>
-			<!-- Attaches each module's -sources.jar. The version comes from parley-parent; package
-			     (not deploy) so the source jar is attached BEFORE the deploy plugin runs. -->
+			<!-- Attaches the -sources.jar. The version comes from parley-parent; package (not deploy)
+			     so the source jar is attached BEFORE the deploy plugin runs. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
@@ -87,6 +52,102 @@
 					</execution>
 				</executions>
 			</plugin>
+
+			<!-- The provider test suite as parley-files-sftp-<version>-tests.jar. A provider runs it
+			     with <type>test-jar</type><scope>test</scope> and surefire's dependenciesToScan
+			     (see the README, "Testing a provider"). -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>test-jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Here only the tests that need no provider run (there is none here); the suite runs
+			     in the provider projects. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<includes>
+						<include>**/spi/*Test.java</include>
+					</includes>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
+
+	<dependencies>
+		<!-- Used directly (Hex), so named here too -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-core</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
+		<!-- Used by providers (IoUtils) -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-io</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-files</artifactId>
+			<version>${parley.version}</version>
+		</dependency>
+
+		<!-- The suite's own dependencies. A provider that runs the suite names these too
+		     (test-jar dependencies aren't passed on). -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-files</artifactId>
+			<version>${parley.version}</version>
+			<type>test-jar</type>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.13.4</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- The embedded SSH server the suite talks to -->
+		<dependency>
+			<groupId>com.sshtools</groupId>
+			<artifactId>maverick-synergy-server</artifactId>
+			<version>3.1.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.sshtools</groupId>
+			<artifactId>maverick-virtual-session</artifactId>
+			<version>3.1.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.sshtools</groupId>
+			<artifactId>maverick-virtual-filesystem</artifactId>
+			<version>3.1.2</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- A parley-ssh server for the ssh-agent test; it registers no provider -->
+		<dependency>
+			<groupId>us.bringardner.parley</groupId>
+			<artifactId>parley-ssh</artifactId>
+			<version>${parley.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- On Windows the embedded server is MINA's (EmbeddedMinaServer); it registers no provider -->
+		<dependency>
+			<groupId>org.apache.sshd</groupId>
+			<artifactId>sshd-sftp</artifactId>
+			<version>2.19.0</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 </project>
