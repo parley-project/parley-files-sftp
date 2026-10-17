@@ -6,7 +6,7 @@ import java.io.IOException;
  * An SSH library that SftpFileSourceFactory can use. An implementation is found at run time: put
  * its jar on the class path with a {@code META-INF/services/us.bringardner.parley.files.sftp.spi.SshProvider}
  * file naming the class (it needs a public no-argument constructor), or call
- * {@link SshProviders#register(SshProvider)}. parley-files-sftp-parley, parley-files-sftp-jsch and
+ * {@link SshProviders#register(SshProvider)}. parley-files-sftp-parley-ssh, parley-files-sftp-jsch and
  * parley-files-sftp-mina are implementations; others can be written against this package alone.
  * <p>
  * Methods added to this interface later get default implementations, so a provider written

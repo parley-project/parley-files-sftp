@@ -17,7 +17,7 @@ Add parley-files-sftp and a provider. parley-ssh's is the usual one:
 ```xml
 <dependency>
     <groupId>us.bringardner.parley</groupId>
-    <artifactId>parley-files-sftp-parley</artifactId>
+    <artifactId>parley-files-sftp-parley-ssh</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
@@ -28,7 +28,7 @@ Each provider depends on `parley-files-sftp`, so that one dependency brings both
 
 | Artifact | Name | Library |
 |---|---|---|
-| [`parley-files-sftp-parley`](https://github.com/parley-project/parley-files-sftp-parley) | `parley` | [parley-ssh](https://github.com/parley-project/parley-ssh), Parley's own SSH library: no third party code |
+| [`parley-files-sftp-parley-ssh`](https://github.com/parley-project/parley-files-sftp-parley-ssh) | `parley` | [parley-ssh](https://github.com/parley-project/parley-ssh), Parley's own SSH library: no third party code |
 | [`parley-files-sftp-jsch`](https://github.com/parley-project/parley-files-sftp-jsch) | `jsch` | [JSch, maintained fork](https://github.com/mwiede/jsch) (`com.github.mwiede:jsch`). **Can't write at a position** (see its README) |
 | [`parley-files-sftp-mina`](https://github.com/parley-project/parley-files-sftp-mina) | `mina` | [Apache MINA SSHD](https://mina.apache.org/sshd-project/). **Can't log in with an ssh-agent** (see its README) |
 
@@ -42,7 +42,7 @@ A provider is available when its jar is on the class path. Which one a factory u
 3. Otherwise the only one there. With several and none named, connecting fails and asks for a name;
    with none, it fails and says which jars to add.
 
-So a program that ships with `parley-files-sftp-parley` uses parley-ssh, and a deployment can switch to
+So a program that ships with `parley-files-sftp-parley-ssh` uses parley-ssh, and a deployment can switch to
 another library, for example if parley-ssh has a bug that matters to it, without changing the program:
 add `parley-files-sftp-jsch` (or `-mina`) to the class path and set
 
@@ -93,7 +93,7 @@ time. Something the library can't do is the provider's to document and to refuse
 `IOException` when it is tried (as the JSch provider does for writing at a position), not something to
 work around. Errors are `IOException`s: `NoSuchFileException` for a missing file and `AccessDeniedException`
 for a refused permission (see `SftpChannel`), so the FileSource behaves the same whatever the library.
-parley-files-sftp-parley, -jsch and -mina are written the same way and are the examples to follow.
+parley-files-sftp-parley-ssh, -jsch and -mina are written the same way and are the examples to follow.
 
 ## Testing a provider
 

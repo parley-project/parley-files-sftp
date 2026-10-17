@@ -30,12 +30,12 @@ public final class SshProviders {
 	public static final String SYSTEM_PROPERTY = "parley.sftp.implementation";
 	/** The older name of {@link #SYSTEM_PROPERTY}, still read when the new one isn't set. */
 	public static final String LEGACY_SYSTEM_PROPERTY = "bjl.sftp.implementation";
-	/** parley-ssh's provider (parley-files-sftp-parley), used when several are available and none is named. */
+	/** parley-ssh's provider (parley-files-sftp-parley-ssh), used when several are available and none is named. */
 	public static final String PARLEY = "parley";
 	/** The older name of {@link #PARLEY}, still accepted. */
 	public static final String LEGACY_PARLEY = "bjl";
 	/** What to add when there is no provider. */
-	static final String ADD_ONE = "add one to the class path: us.bringardner.parley:parley-files-sftp-parley"
+	static final String ADD_ONE = "add one to the class path: us.bringardner.parley:parley-files-sftp-parley-ssh"
 			+" (parley-ssh), parley-files-sftp-jsch (JSch) or parley-files-sftp-mina (Apache MINA SSHD)";
 
 	private static final Map<String, SshProvider> REGISTERED = new ConcurrentHashMap<>();

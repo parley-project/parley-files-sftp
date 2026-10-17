@@ -61,7 +61,7 @@ import us.bringardner.parley.core.util.Hex;
 
 /**
  * FileSource factory for SFTP. The SSH library is a provider found at run time
- * (see {@link SshProviders}): parley-files-sftp-parley, -jsch, -mina or any other
+ * (see {@link SshProviders}): parley-files-sftp-parley-ssh, -jsch, -mina or any other
  * on the class path. The "implementation" connection property (or the system
  * property parley.sftp.implementation) chooses one; without it, parley's is used
  * if it is there, else the only one there.

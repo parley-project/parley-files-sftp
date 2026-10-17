@@ -23,7 +23,7 @@ part of the Parley library family.
   connecting (worked out from the credentials set) and `getConnectProperties()` includes it.
 - `listFiles(ProgressMonitor)` is now `listFiles(FileSourceProgress)`.
 - **The SSH library is a provider on the class path.** `parley-files-sftp` no longer includes any SSH
-  library; add a provider: `parley-files-sftp-parley` (parley-ssh), `parley-files-sftp-jsch` or
+  library; add a provider: `parley-files-sftp-parley-ssh` (parley-ssh), `parley-files-sftp-jsch` or
   `parley-files-sftp-mina`, each a project of its own. Each brings `parley-files-sftp` with it. Providers are found with
   `ServiceLoader` (or `SshProviders.register`), and anyone can write one against the new
   `us.bringardner.parley.files.sftp.spi` package (it was `sftp.client`).

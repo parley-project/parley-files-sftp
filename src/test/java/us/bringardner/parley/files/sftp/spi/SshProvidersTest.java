@@ -44,7 +44,7 @@ public class SshProvidersTest {
 	void noneSaysWhatToAdd() {
 		IllegalStateException e = assertThrows(IllegalStateException.class,
 				() -> SshProviders.choose(null, Collections.emptyList()));
-		assertTrue(e.getMessage().contains("parley-files-sftp-parley"), e.getMessage());
+		assertTrue(e.getMessage().contains("parley-files-sftp-parley-ssh"), e.getMessage());
 	}
 
 	@Test
