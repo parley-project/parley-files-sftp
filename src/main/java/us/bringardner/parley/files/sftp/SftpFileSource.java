@@ -544,7 +544,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		if( me.getId() == a.getUId()) {
 			return (perm & ownerBit) != 0;
 		}
-		if( me.hasGroup(a.getGId())) {
+		if( me.hasGroup(SftpFileSourceFactory.idAsInt(a.getGId()))) {
 			return (perm & (ownerBit >> 3)) != 0;
 		}
 		return (perm & (ownerBit >> 6)) != 0;
@@ -1469,8 +1469,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 					factory.rememberUnknownNames(a.getUId(), a.getGId());
 				}
 			}
-			owner = new FileSourceUser(a.getUId(), userName == null ? ""+a.getUId() : userName,
-					a.getGId(), groupName == null ? ""+a.getGId() : groupName);
+			owner = new FileSourceUser(SftpFileSourceFactory.idAsInt(a.getUId()), userName == null ? ""+a.getUId() : userName,
+					SftpFileSourceFactory.idAsInt(a.getGId()), groupName == null ? ""+a.getGId() : groupName);
 		}
 		return owner;
 	}

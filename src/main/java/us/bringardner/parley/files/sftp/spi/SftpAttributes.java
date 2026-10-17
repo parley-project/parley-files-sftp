@@ -12,18 +12,21 @@ public final class SftpAttributes {
 	private static final int S_IFREG = 0100000;
 
 	private final long size;
-	private final int uid;
-	private final int gid;
+	private final long uid;
+	private final long gid;
 	private final int permissions;
-	private final int atime;
-	private final int mtime;
+	private final long atime;
+	private final long mtime;
 
 	/**
+	 * @param uid the owner's user id (SFTP sends an unsigned 32-bit number; pass it unsigned)
+	 * @param gid the group id (unsigned, as uid)
 	 * @param permissions full st_mode: file type bits and permission bits
-	 * @param atime seconds since 1970
-	 * @param mtime seconds since 1970
+	 * @param atime seconds since 1970 (unsigned: a library that gives an int should pass
+	 *        Integer.toUnsignedLong(t), so times after 2038 stay right)
+	 * @param mtime seconds since 1970 (unsigned, as atime)
 	 */
-	public SftpAttributes(long size, int uid, int gid, int permissions, int atime, int mtime) {
+	public SftpAttributes(long size, long uid, long gid, int permissions, long atime, long mtime) {
 		this.size = size;
 		this.uid = uid;
 		this.gid = gid;
@@ -36,11 +39,11 @@ public final class SftpAttributes {
 		return size;
 	}
 
-	public int getUId() {
+	public long getUId() {
 		return uid;
 	}
 
-	public int getGId() {
+	public long getGId() {
 		return gid;
 	}
 
@@ -50,12 +53,12 @@ public final class SftpAttributes {
 	}
 
 	/** Seconds since 1970. */
-	public int getATime() {
+	public long getATime() {
 		return atime;
 	}
 
 	/** Seconds since 1970. */
-	public int getMTime() {
+	public long getMTime() {
 		return mtime;
 	}
 

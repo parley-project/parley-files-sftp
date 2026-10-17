@@ -59,15 +59,15 @@ public interface SftpChannel extends Closeable {
 	/** Sets permission bits (0 to 07777), keeping the owner, times and size. */
 	void chmod(String path, int mode) throws IOException;
 
-	void chown(String path, int uid) throws IOException;
+	void chown(String path, long uid) throws IOException;
 
-	void chgrp(String path, int gid) throws IOException;
-
-	/** Seconds since 1970. */
-	void setModifiedTime(String path, int seconds) throws IOException;
+	void chgrp(String path, long gid) throws IOException;
 
 	/** Seconds since 1970. */
-	void setAccessTime(String path, int seconds) throws IOException;
+	void setModifiedTime(String path, long seconds) throws IOException;
+
+	/** Seconds since 1970. */
+	void setAccessTime(String path, long seconds) throws IOException;
 
 	/** Sets the size, cutting the file short or extending it with zeros. */
 	void truncate(String path, long size) throws IOException;

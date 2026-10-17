@@ -55,8 +55,8 @@ class ParleySftpChannel extends AbstractSftpChannel {
 	}
 
 	static SftpAttributes convert(SftpAttrs a) {
-		return new SftpAttributes(a.getSize(), a.getUid(), a.getGid(), a.getPermissions(),
-				(int) a.getAccessTime(), (int) a.getModifyTime());
+		return new SftpAttributes(a.getSize(), Integer.toUnsignedLong(a.getUid()), Integer.toUnsignedLong(a.getGid()),
+				a.getPermissions(), a.getAccessTime(), a.getModifyTime());
 	}
 
 	@Override
@@ -139,39 +139,39 @@ class ParleySftpChannel extends AbstractSftpChannel {
 	}
 
 	@Override
-	public void chown(String path, int uid) throws IOException {
+	public void chown(String path, long uid) throws IOException {
 		// SFTP v3 sets uid and gid together; keep the group
 		call(path, () -> {
 			int gid = sftp.stat(path).getGid();
-			sftp.setStat(path, SftpAttrs.NONE.withOwner(uid, gid));
+			sftp.setStat(path, SftpAttrs.NONE.withOwner((int) uid, gid));
 			return null;
 		});
 	}
 
 	@Override
-	public void chgrp(String path, int gid) throws IOException {
+	public void chgrp(String path, long gid) throws IOException {
 		call(path, () -> {
 			int uid = sftp.stat(path).getUid();
-			sftp.setStat(path, SftpAttrs.NONE.withOwner(uid, gid));
+			sftp.setStat(path, SftpAttrs.NONE.withOwner(uid, (int) gid));
 			return null;
 		});
 	}
 
 	@Override
-	public void setModifiedTime(String path, int seconds) throws IOException {
+	public void setModifiedTime(String path, long seconds) throws IOException {
 		// SFTP v3 sets both times together; keep the access time
 		call(path, () -> {
 			SftpAttrs cur = sftp.stat(path);
-			sftp.setStat(path, SftpAttrs.NONE.withTimes(cur.getAccessTime(), seconds & 0xffffffffL));
+			sftp.setStat(path, SftpAttrs.NONE.withTimes(cur.getAccessTime(), seconds));
 			return null;
 		});
 	}
 
 	@Override
-	public void setAccessTime(String path, int seconds) throws IOException {
+	public void setAccessTime(String path, long seconds) throws IOException {
 		call(path, () -> {
 			SftpAttrs cur = sftp.stat(path);
-			sftp.setStat(path, SftpAttrs.NONE.withTimes(seconds & 0xffffffffL, cur.getModifyTime()));
+			sftp.setStat(path, SftpAttrs.NONE.withTimes(seconds, cur.getModifyTime()));
 			return null;
 		});
 	}

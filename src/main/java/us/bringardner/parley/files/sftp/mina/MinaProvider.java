@@ -31,14 +31,22 @@ public class MinaProvider implements SshProvider {
 	/** Unanswered keepalives before the connection is dropped (OpenSSH's default). */
 	static final int SERVER_ALIVE_COUNT_MAX = 3;
 
+	/** The name that selects it: "mina". */
+	public static final String NAME = "mina";
+
 	@Override
 	public String getName() {
-		return SshProviders.MINA;
+		return NAME;
+	}
+
+	@Override
+	public String getDescription() {
+		return "Apache MINA SSHD (org.apache.sshd:sshd-sftp)";
 	}
 
 	@Override
 	public SshConnection connect(SshSettings s) throws IOException {
-		if( s.useAgent ) {
+		if( s.isUseAgent() ) {
 			throw new IOException("Logging in with ssh-agent isn't supported by the mina SSH library yet; use implementation=jsch");
 		}
 		// One client per connection: the host-key policy is set on the client,
@@ -46,14 +54,14 @@ public class MinaProvider implements SshProvider {
 		SshClient client = SshClient.setUpDefaultClient();
 		boolean ok = false;
 		try {
-			if( s.strictHostKeyChecking ) {
+			if( s.isStrictHostKeyChecking() ) {
 				Path knownHosts = Paths.get(SshProviders.knownHostsFile(s));
 				client.setServerKeyVerifier(new KnownHostsServerKeyVerifier(RejectAllServerKeyVerifier.INSTANCE, knownHosts));
 			} else {
 				client.setServerKeyVerifier(AcceptAllServerKeyVerifier.INSTANCE);
 			}
-			if( s.serverAliveIntervalMs > 0 ) {
-				CoreModuleProperties.HEARTBEAT_INTERVAL.set(client, Duration.ofMillis(s.serverAliveIntervalMs));
+			if( s.getServerAliveIntervalMs() > 0 ) {
+				CoreModuleProperties.HEARTBEAT_INTERVAL.set(client, Duration.ofMillis(s.getServerAliveIntervalMs()));
 				// Ask for a reply and give up after this many go unanswered, like
 				// OpenSSH's ServerAliveCountMax. Without it MINA's heartbeats are
 				// one-way, so a dead connection could look alive for many minutes.
@@ -61,16 +69,16 @@ public class MinaProvider implements SshProvider {
 			}
 			client.start();
 
-			Duration timeout = s.connectTimeoutMs > 0 ? Duration.ofMillis(s.connectTimeoutMs) : Duration.ofDays(365);
+			Duration timeout = s.getConnectTimeoutMs() > 0 ? Duration.ofMillis(s.getConnectTimeoutMs()) : Duration.ofDays(365);
 			ClientSession session;
 			try {
-				session = client.connect(s.user, s.host, s.port).verify(timeout).getSession();
+				session = client.connect(s.getUser(), s.getHost(), s.getPort()).verify(timeout).getSession();
 			} catch (SshException e) {
 				throw hostKeyError(s, e);
 			}
 			try {
-				if( s.password != null ) {
-					session.addPasswordIdentity(s.password);
+				if( s.getPassword() != null ) {
+					session.addPasswordIdentity(s.getPassword());
 				}
 				for (KeyPair kp : loadKeys(s)) {
 					session.addPublicKeyIdentity(kp);
@@ -98,7 +106,7 @@ public class MinaProvider implements SshProvider {
 	 * message, during the connect or the login that follows it.
 	 */
 	private static IOException hostKeyError(SshSettings s, SshException e) {
-		if( s.strictHostKeyChecking && "Server key did not validate".equals(e.getMessage())) {
+		if( s.isStrictHostKeyChecking() && "Server key did not validate".equals(e.getMessage())) {
 			return SshProviders.hostKeyRejected(s, e.getMessage(), e);
 		}
 		return e;
@@ -107,12 +115,12 @@ public class MinaProvider implements SshProvider {
 	private static Iterable<KeyPair> loadKeys(SshSettings s) throws IOException {
 		InputStream in = null;
 		String name = null;
-		if( s.privateKey != null ) {
-			in = new ByteArrayInputStream(s.privateKey);
+		if( s.getPrivateKey() != null ) {
+			in = new ByteArrayInputStream(s.getPrivateKey());
 			name = "privateKey";
-		} else if( s.privateKeyFile != null && !s.privateKeyFile.isEmpty()) {
-			in = Files.newInputStream(Paths.get(s.privateKeyFile));
-			name = s.privateKeyFile;
+		} else if( s.getPrivateKeyFile() != null && !s.getPrivateKeyFile().isEmpty()) {
+			in = Files.newInputStream(Paths.get(s.getPrivateKeyFile()));
+			name = s.getPrivateKeyFile();
 		}
 		if( in == null ) {
 			return java.util.Collections.emptyList();

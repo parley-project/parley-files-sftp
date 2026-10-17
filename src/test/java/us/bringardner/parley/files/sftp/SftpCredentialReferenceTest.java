@@ -41,7 +41,7 @@ public class SftpCredentialReferenceTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {SshProviders.JSCH, SshProviders.MINA, SshProviders.PARLEY})
+	@ValueSource(strings = {"jsch", "mina", SshProviders.PARLEY})
 	public void aReferenceIsResolvedToLogInAndKeptAsIs(String implementation) throws IOException {
 		Credentials.register(new EnvCredentialProvider(Map.of("SFTP_PW", TestServer.PASSWORD)::get));
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
@@ -61,8 +61,8 @@ public class SftpCredentialReferenceTest {
 		Credentials.setPrompter((label, req) -> { labels.add(label); return answers.remove(0).toCharArray(); });
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
 		try {
-			assertThrows(IOException.class, () -> f.connect(props(SshProviders.JSCH, "@prompt:")), "the first answer is wrong");
-			assertTrue(f.connect(props(SshProviders.JSCH, "@prompt:")));
+			assertThrows(IOException.class, () -> f.connect(props("jsch", "@prompt:")), "the first answer is wrong");
+			assertTrue(f.connect(props("jsch", "@prompt:")));
 			assertTrue(answers.isEmpty());
 			assertEquals("password for "+TestServer.USER+"@"+TestServer.HOST+" (sftp)", labels.get(0));
 		} finally {
@@ -73,7 +73,7 @@ public class SftpCredentialReferenceTest {
 	@Test
 	public void aReferenceThatCantBeResolvedFailsTheConnectNamingIt() throws IOException {
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
-		Properties p = props(SshProviders.JSCH, "@env:NO_SUCH_SFTP_PW_VAR");
+		Properties p = props("jsch", "@env:NO_SUCH_SFTP_PW_VAR");
 		CredentialException e = assertThrows(CredentialException.class, () -> f.connect(p));
 		assertTrue(e.getMessage().startsWith("@env:NO_SUCH_SFTP_PW_VAR"), e.getMessage());
 	}
@@ -99,7 +99,7 @@ public class SftpCredentialReferenceTest {
 	public void withNoAgentRunningAgentLoginSaysSo() throws IOException {
 		assumeTrue(System.getenv("SSH_AUTH_SOCK") == null && !System.getProperty("os.name").startsWith("Windows"));
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
-		Properties p = props(SshProviders.JSCH, "");
+		Properties p = props("jsch", "");
 		p.setProperty(SftpFileSourceFactory.PROP_AUTH, SftpFileSourceFactory.AUTH_AGENT);
 		IOException e = assertThrows(IOException.class, () -> f.connect(p));
 		assertTrue(e.getMessage().contains("SSH_AUTH_SOCK"), e.getMessage());
@@ -108,7 +108,7 @@ public class SftpCredentialReferenceTest {
 	@Test
 	public void minaWithoutAgentSupportSaysSo() throws IOException {
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
-		Properties p = props(SshProviders.MINA, "");
+		Properties p = props("mina", "");
 		p.setProperty(SftpFileSourceFactory.PROP_AUTH, SftpFileSourceFactory.AUTH_AGENT);
 		IOException e = assertThrows(IOException.class, () -> f.connect(p));
 		assertTrue(e.getMessage().contains("ssh-agent isn't supported by the mina"), e.getMessage());

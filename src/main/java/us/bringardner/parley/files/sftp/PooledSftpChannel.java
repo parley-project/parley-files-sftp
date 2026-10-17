@@ -142,22 +142,22 @@ class PooledSftpChannel implements SftpChannel {
 	}
 
 	@Override
-	public void chown(String path, int uid) throws IOException {
+	public void chown(String path, long uid) throws IOException {
 		call(() -> { channel.chown(path, uid); return null; });
 	}
 
 	@Override
-	public void chgrp(String path, int gid) throws IOException {
+	public void chgrp(String path, long gid) throws IOException {
 		call(() -> { channel.chgrp(path, gid); return null; });
 	}
 
 	@Override
-	public void setModifiedTime(String path, int seconds) throws IOException {
+	public void setModifiedTime(String path, long seconds) throws IOException {
 		call(() -> { channel.setModifiedTime(path, seconds); return null; });
 	}
 
 	@Override
-	public void setAccessTime(String path, int seconds) throws IOException {
+	public void setAccessTime(String path, long seconds) throws IOException {
 		call(() -> { channel.setAccessTime(path, seconds); return null; });
 	}
 

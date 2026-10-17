@@ -59,7 +59,9 @@ class JschSftpChannel implements SftpChannel {
 	}
 
 	static SftpAttributes convert(SftpATTRS a) {
-		return new SftpAttributes(a.getSize(), a.getUId(), a.getGId(), a.getPermissions(), a.getATime(), a.getMTime());
+		// JSch gives SFTP's unsigned 32-bit values as ints
+		return new SftpAttributes(a.getSize(), Integer.toUnsignedLong(a.getUId()), Integer.toUnsignedLong(a.getGId()),
+				a.getPermissions(), Integer.toUnsignedLong(a.getATime()), Integer.toUnsignedLong(a.getMTime()));
 	}
 
 	@Override
@@ -149,25 +151,26 @@ class JschSftpChannel implements SftpChannel {
 		call(path, () -> { sftp.chmod(mode, path); return null; });
 	}
 
+	// SFTP sends ids and times as unsigned 32-bit numbers; JSch takes them as ints, so a cast keeps the bits
 	@Override
-	public void chown(String path, int uid) throws IOException {
-		call(path, () -> { sftp.chown(uid, path); return null; });
+	public void chown(String path, long uid) throws IOException {
+		call(path, () -> { sftp.chown((int) uid, path); return null; });
 	}
 
 	@Override
-	public void chgrp(String path, int gid) throws IOException {
-		call(path, () -> { sftp.chgrp(gid, path); return null; });
+	public void chgrp(String path, long gid) throws IOException {
+		call(path, () -> { sftp.chgrp((int) gid, path); return null; });
 	}
 
 	@Override
-	public void setModifiedTime(String path, int seconds) throws IOException {
-		call(path, () -> { sftp.setMtime(path, seconds); return null; });
+	public void setModifiedTime(String path, long seconds) throws IOException {
+		call(path, () -> { sftp.setMtime(path, (int) seconds); return null; });
 	}
 
 	@Override
-	public void setAccessTime(String path, int seconds) throws IOException {
+	public void setAccessTime(String path, long seconds) throws IOException {
 		// SFTP v3 sets both times together; keep the modification time.
-		setStat(path, a -> a.setACMODTIME(seconds, a.getMTime()));
+		setStat(path, a -> a.setACMODTIME((int) seconds, a.getMTime()));
 	}
 
 	@Override

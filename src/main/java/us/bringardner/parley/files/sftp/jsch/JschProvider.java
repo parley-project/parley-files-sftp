@@ -22,9 +22,23 @@ import us.bringardner.parley.files.sftp.spi.SshSettings;
 /** SSH through JSch (the maintained com.github.mwiede fork, or the original 0.1.55). */
 public class JschProvider implements SshProvider {
 
+	/** The name that selects it: "jsch". */
+	public static final String NAME = "jsch";
+
 	@Override
 	public String getName() {
-		return SshProviders.JSCH;
+		return NAME;
+	}
+
+	@Override
+	public String getDescription() {
+		return "JSch (com.github.mwiede:jsch)";
+	}
+
+	/** JSch's public API has no write at a position: see JschSftpFile. */
+	@Override
+	public boolean canWriteAtOffset() {
+		return false;
 	}
 
 	@Override
@@ -32,40 +46,40 @@ public class JschProvider implements SshProvider {
 		try {
 			// A new JSch per connection, so identities don't pile up across connects
 			JSch jsch = new JSch();
-			if( s.strictHostKeyChecking ) {
+			if( s.isStrictHostKeyChecking() ) {
 				jsch.setKnownHosts(SshProviders.knownHostsFile(s));
 			}
-			if( s.useAgent ) {
+			if( s.isUseAgent() ) {
 				jsch.setIdentityRepository(new AgentIdentityRepository(agentConnector()));
-			} else if( s.privateKey != null ) {
-				jsch.addIdentity(null, s.privateKey, null, null);
-			} else if( s.privateKeyFile != null && !s.privateKeyFile.isEmpty()) {
-				jsch.addIdentity(s.privateKeyFile);
+			} else if( s.getPrivateKey() != null ) {
+				jsch.addIdentity(null, s.getPrivateKey(), null, null);
+			} else if( s.getPrivateKeyFile() != null && !s.getPrivateKeyFile().isEmpty()) {
+				jsch.addIdentity(s.getPrivateKeyFile());
 			}
 
-			Session session = jsch.getSession(s.user, s.host, s.port);
+			Session session = jsch.getSession(s.getUser(), s.getHost(), s.getPort());
 			Properties config = new Properties();
-			config.put("StrictHostKeyChecking", s.strictHostKeyChecking ? "yes" : "no");
+			config.put("StrictHostKeyChecking", s.isStrictHostKeyChecking() ? "yes" : "no");
 			session.setConfig(config);
-			if( s.useAgent ) {
+			if( s.isUseAgent() ) {
 				// only the agent's keys: don't fall back to asking for a password
 				config.put("PreferredAuthentications", "publickey");
 				session.setConfig(config);
-			} else if( s.password != null ) {
-				session.setPassword(s.password.getBytes(StandardCharsets.UTF_8));
+			} else if( s.getPassword() != null ) {
+				session.setPassword(s.getPassword().getBytes(StandardCharsets.UTF_8));
 			}
-			if( s.serverAliveIntervalMs > 0 ) {
-				session.setServerAliveInterval(s.serverAliveIntervalMs);
+			if( s.getServerAliveIntervalMs() > 0 ) {
+				session.setServerAliveInterval(s.getServerAliveIntervalMs());
 			}
 			// JSch's connection thread isn't a daemon by default, so a program that
 			// forgot disConnect() never exited. MINA's threads already are.
 			session.setDaemonThread(true);
-			session.connect(s.connectTimeoutMs);
-			return new JschConnection(session, s.connectTimeoutMs);
+			session.connect(s.getConnectTimeoutMs());
+			return new JschConnection(session, s.getConnectTimeoutMs());
 		} catch (JSchException e) {
 			String m = e.getMessage();
 			// by message, so the original JSch 0.1.55 is covered too (it has no exception types for these)
-			if( s.strictHostKeyChecking && m != null
+			if( s.isStrictHostKeyChecking() && m != null
 					&& (m.startsWith("reject HostKey") || m.startsWith("UnknownHostKey") || m.startsWith("HostKey has been changed"))) {
 				throw SshProviders.hostKeyRejected(s, m, e);
 			}

@@ -72,12 +72,12 @@ class MinaSftpChannel extends AbstractSftpChannel {
 		}
 	}
 
-	static int seconds(FileTime t) {
-		return t == null ? 0 : (int) t.to(TimeUnit.SECONDS);
+	static long seconds(FileTime t) {
+		return t == null ? 0 : t.to(TimeUnit.SECONDS);
 	}
 
 	static SftpAttributes convert(Attributes a) {
-		return new SftpAttributes(a.getSize(), a.getUserId(), a.getGroupId(), a.getPermissions(),
+		return new SftpAttributes(a.getSize(), Integer.toUnsignedLong(a.getUserId()), Integer.toUnsignedLong(a.getGroupId()), a.getPermissions(),
 				seconds(a.getAccessTime()), seconds(a.getModifyTime()));
 	}
 
@@ -170,26 +170,26 @@ class MinaSftpChannel extends AbstractSftpChannel {
 	}
 
 	@Override
-	public void chown(String path, int uid) throws IOException {
+	public void chown(String path, long uid) throws IOException {
 		// SFTP v3 sets uid and gid together; keep the group
 		call(path, () -> {
 			int gid = sftp.stat(path).getGroupId();
-			sftp.setStat(path, new Attributes().owner(uid, gid));
+			sftp.setStat(path, new Attributes().owner((int) uid, gid));
 			return null;
 		});
 	}
 
 	@Override
-	public void chgrp(String path, int gid) throws IOException {
+	public void chgrp(String path, long gid) throws IOException {
 		call(path, () -> {
 			int uid = sftp.stat(path).getUserId();
-			sftp.setStat(path, new Attributes().owner(uid, gid));
+			sftp.setStat(path, new Attributes().owner(uid, (int) gid));
 			return null;
 		});
 	}
 
 	@Override
-	public void setModifiedTime(String path, int seconds) throws IOException {
+	public void setModifiedTime(String path, long seconds) throws IOException {
 		// SFTP v3 sets both times together; keep the access time
 		call(path, () -> {
 			Attributes cur = sftp.stat(path);
@@ -201,7 +201,7 @@ class MinaSftpChannel extends AbstractSftpChannel {
 	}
 
 	@Override
-	public void setAccessTime(String path, int seconds) throws IOException {
+	public void setAccessTime(String path, long seconds) throws IOException {
 		call(path, () -> {
 			Attributes cur = sftp.stat(path);
 			sftp.setStat(path, new Attributes()

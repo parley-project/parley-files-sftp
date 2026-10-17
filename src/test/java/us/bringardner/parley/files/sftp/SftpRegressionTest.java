@@ -671,10 +671,14 @@ public class SftpRegressionTest {
 
 	/** Each factory really uses the library it was configured with. */
 	@Test
-	void implementationSelection() {
+	void implementationSelection() throws IOException {
 		assertEquals("jsch", jsch.getEffectiveImplementation());
 		assertEquals("mina", mina.getEffectiveImplementation());
-		assertThrows(IllegalArgumentException.class, () -> new SftpFileSourceFactory().setImplementation("telnet"));
+		// any name can be set (a provider may be added later); connecting says it isn't there
+		SftpFileSourceFactory telnet = new SftpFileSourceFactory();
+		IOException e = assertThrows(IOException.class, () -> telnet.connect(TestServer.properties("telnet", TestServer.port())));
+		assertTrue(e.getMessage().contains("The SSH provider 'telnet' isn't on the class path"), e.getMessage());
+		assertTrue(e.getMessage().contains("Available: jsch, mina, parley"), e.getMessage());
 		assertNotEquals(jsch.getSessionKey(), mina.getSessionKey(), "the two libraries never share a session");
 	}
 }

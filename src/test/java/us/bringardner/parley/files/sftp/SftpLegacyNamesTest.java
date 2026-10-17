@@ -47,7 +47,7 @@ public class SftpLegacyNamesTest {
 		assertEquals(SshProviders.PARLEY, SshProviders.defaultName());
 		// the new property wins when both are set
 		System.setProperty(SshProviders.SYSTEM_PROPERTY, "mina");
-		assertEquals(SshProviders.MINA, SshProviders.defaultName());
+		assertEquals("mina", SshProviders.defaultName());
 	}
 
 	@Test

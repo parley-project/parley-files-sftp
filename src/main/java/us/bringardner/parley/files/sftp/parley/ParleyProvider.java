@@ -35,36 +35,41 @@ public class ParleyProvider implements SshProvider {
 	}
 
 	@Override
+	public String getDescription() {
+		return "parley-ssh (us.bringardner.parley:parley-ssh)";
+	}
+
+	@Override
 	public SshConnection connect(SshSettings s) throws IOException {
 		// One client per connection: the host-key policy and keepalive are set on the client
 		SshClient client = new SshClient();
 		boolean ok = false;
 		try {
-			if( s.strictHostKeyChecking ) {
+			if( s.isStrictHostKeyChecking() ) {
 				client.setHostKeyVerifier(new KnownHosts(new File(SshProviders.knownHostsFile(s))));
 			} else {
 				client.setHostKeyVerifier(HostKeyVerifiers.acceptAll());
 			}
-			if( s.serverAliveIntervalMs > 0 ) {
-				client.setKeepAliveInterval(s.serverAliveIntervalMs);
+			if( s.getServerAliveIntervalMs() > 0 ) {
+				client.setKeepAliveInterval(s.getServerAliveIntervalMs());
 			}
-			client.setConnectTimeout(s.connectTimeoutMs);
+			client.setConnectTimeout(s.getConnectTimeoutMs());
 			ClientSession session;
 			try {
-				session = client.connectAndWait(s.host, s.port);
+				session = client.connectAndWait(s.getHost(), s.getPort());
 			} catch (SshException e) {
-				if( s.strictHostKeyChecking && e.getReason() == SshConstants.SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE ) {
+				if( s.isStrictHostKeyChecking() && e.getReason() == SshConstants.SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE ) {
 					throw SshProviders.hostKeyRejected(s, e.getMessage(), e);
 				}
 				throw e;
 			}
 			try {
-				session.setAuthTimeout(s.connectTimeoutMs);
-				session.setChannelTimeout(s.connectTimeoutMs);
-				if( s.useAgent ) {
+				session.setAuthTimeout(s.getConnectTimeoutMs());
+				session.setChannelTimeout(s.getConnectTimeoutMs());
+				if( s.isUseAgent() ) {
 					// only the agent's keys, as with JSch: no password or key file
 					try (SshAgent agent = connectAgent()) {
-						session.authenticateAndWait(s.user, PublicKeyAuth.fromAgent(agent));
+						session.authenticateAndWait(s.getUser(), PublicKeyAuth.fromAgent(agent));
 					}
 				} else {
 					List<IClientAuthMethod> methods = new ArrayList<IClientAuthMethod>();
@@ -72,11 +77,11 @@ public class ParleyProvider implements SshProvider {
 					if( !keys.isEmpty() ) {
 						methods.add(new PublicKeyAuth(keys));
 					}
-					if( s.password != null ) {
-						methods.add(new PasswordAuth(s.password));
-						methods.add(KeyboardInteractiveAuth.password(s.password.toCharArray()));
+					if( s.getPassword() != null ) {
+						methods.add(new PasswordAuth(s.getPassword()));
+						methods.add(KeyboardInteractiveAuth.password(s.getPassword().toCharArray()));
 					}
-					session.authenticateAndWait(s.user, methods.toArray(new IClientAuthMethod[0]));
+					session.authenticateAndWait(s.getUser(), methods.toArray(new IClientAuthMethod[0]));
 				}
 			} catch (IOException | RuntimeException e) {
 				session.close();
@@ -108,10 +113,10 @@ public class ParleyProvider implements SshProvider {
 
 	private static List<KeyPair> loadKeys(SshSettings s) throws IOException {
 		List<KeyPair> ret = new ArrayList<KeyPair>();
-		if( s.privateKey != null ) {
-			ret.add(SshKeyLoader.parse(new String(s.privateKey, StandardCharsets.US_ASCII), null));
-		} else if( s.privateKeyFile != null && !s.privateKeyFile.isEmpty() ) {
-			ret.add(SshKeyLoader.load(new File(s.privateKeyFile), null));
+		if( s.getPrivateKey() != null ) {
+			ret.add(SshKeyLoader.parse(new String(s.getPrivateKey(), StandardCharsets.US_ASCII), null));
+		} else if( s.getPrivateKeyFile() != null && !s.getPrivateKeyFile().isEmpty() ) {
+			ret.add(SshKeyLoader.load(new File(s.getPrivateKeyFile()), null));
 		}
 		return ret;
 	}

@@ -120,7 +120,7 @@ public class SftpAgentLoginTest {
 
 	@Test
 	void jschRandomAccessWritesGoThroughParleyWithTheAgent() throws IOException {
-		SftpFileSourceFactory f = connect(SshProviders.JSCH);
+		SftpFileSourceFactory f = connect("jsch");
 		try {
 			FileSource file = f.createFileSource("/jsch.bin");
 			write(file, new byte[10]);

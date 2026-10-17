@@ -30,14 +30,29 @@ public interface SshConnection extends Closeable {
 
 	/** Result of {@link SshConnection#exec}. */
 	final class ExecResult {
-		public final int exitStatus;
-		public final String stdout;
-		public final String stderr;
+		private final int exitStatus;
+		private final String stdout;
+		private final String stderr;
 
 		public ExecResult(int exitStatus, String stdout, String stderr) {
 			this.exitStatus = exitStatus;
 			this.stdout = stdout;
 			this.stderr = stderr;
+		}
+
+		/** @return the command's exit status */
+		public int getExitStatus() {
+			return exitStatus;
+		}
+
+		/** @return what the command wrote to standard output */
+		public String getStdout() {
+			return stdout;
+		}
+
+		/** @return what the command wrote to standard error */
+		public String getStderr() {
+			return stderr;
 		}
 	}
 }

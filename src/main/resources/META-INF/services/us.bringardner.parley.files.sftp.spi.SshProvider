@@ -1,0 +1,3 @@
+us.bringardner.parley.files.sftp.parley.ParleyProvider
+us.bringardner.parley.files.sftp.jsch.JschProvider
+us.bringardner.parley.files.sftp.mina.MinaProvider

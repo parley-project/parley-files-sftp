@@ -33,6 +33,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -59,9 +60,11 @@ import us.bringardner.parley.files.sftp.spi.SshSettings;
 import us.bringardner.parley.core.util.Hex;
 
 /**
- * FileSource factory for SFTP. The SSH library is chosen at run time: set
- * the "implementation" connection property (or the system property
- * parley.sftp.implementation) to "jsch" (the default), "mina" or "parley".
+ * FileSource factory for SFTP. The SSH library is a provider found at run time
+ * (see {@link SshProviders}): parley-files-sftp-parley, -jsch, -mina or any other
+ * on the class path. The "implementation" connection property (or the system
+ * property parley.sftp.implementation) chooses one; without it, parley's is used
+ * if it is there, else the only one there.
  */
 public class SftpFileSourceFactory extends FileSourceFactory {
 
@@ -108,7 +111,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	public static final String DEFAULT_STRICT_HOST_KEY_CHECKING = "yes";
 	public static final String PROP_CONNECT_TIMEOUT = "connectTimeout";
 	public static final String PROP_SERVER_ALIVE_INTERVAL = "serverAliveInterval";
-	/** SSH library: "jsch" or "mina"; empty means the system property parley.sftp.implementation, else jsch. */
+	/** The SSH provider to use by name ("parley", "jsch", "mina", ...); empty: see SshProviders. */
 	public static final String PROP_IMPLEMENTATION = "implementation";
 	/**
 	 * Milliseconds a file's attributes (exists, size, times, type, owner) are
@@ -228,7 +231,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	private String strictHostKeyChecking = DEFAULT_STRICT_HOST_KEY_CHECKING;
 	private int connectTimeout = DEFAULT_CONNECT_TIMEOUT;
 	private int serverAliveInterval = DEFAULT_SERVER_ALIVE_INTERVAL;
-	/** "jsch", "mina", or null for the default (see SshProviders). */
+	/** The provider's name, or null for the default (see SshProviders). */
 	private String implementation;
 	/** See PROP_ATTRIBUTE_CACHE_TTL; volatile because files read it from any thread. */
 	private volatile long attributeCacheTtl = defaultAttributeCacheTtl();
@@ -326,8 +329,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	}
 
 	/** uid -> user name and gid -> group name, learned from directory listings. */
-	private final Map<Integer,String> userNames = new ConcurrentHashMap<>();
-	private final Map<Integer,String> groupNames = new ConcurrentHashMap<>();
+	private final Map<Long,String> userNames = new ConcurrentHashMap<>();
+	private final Map<Long,String> groupNames = new ConcurrentHashMap<>();
 
 	public SftpFileSourceFactory() {
 		super();
@@ -535,30 +538,44 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		this.attributeCacheTtl = millis;
 	}
 
-	/** The configured SSH library ("jsch" or "mina"), or null for the default. */
+	/** The configured SSH provider's name, or null for the default. */
 	public String getImplementation() {
 		return implementation;
 	}
 
 	/**
-	 * Chooses the SSH library: "jsch" or "mina". Null or empty uses the
-	 * system property parley.sftp.implementation, else jsch. Takes effect on the
-	 * next connect.
-	 *
-	 * @throws IllegalArgumentException for an unknown name
+	 * Chooses the SSH provider by name ("parley", "jsch", "mina", or another on the class
+	 * path). Null or empty uses the default (see SshProviders). Takes effect on the next
+	 * connect, which fails if no provider of that name is on the class path.
 	 */
 	public void setImplementation(String implementation) {
-		if( implementation == null || implementation.trim().isEmpty()) {
-			this.implementation = null;
-		} else {
-			SshProviders.get(implementation);   // validates the name
-			this.implementation = SshProviders.canonicalName(implementation);
-		}
+		this.implementation = implementation == null || implementation.trim().isEmpty()
+				? null : SshProviders.canonicalName(implementation);
 	}
 
-	/** The library that will actually be used: the configured one or the default. */
+	/**
+	 * The provider that will be used: the configured one, else the default.
+	 * @throws IllegalStateException when none is configured and none can be chosen (see SshProviders.defaultName())
+	 */
 	public String getEffectiveImplementation() {
 		return implementation != null ? implementation : SshProviders.defaultName();
+	}
+
+	/** "" (the default) and the providers on the class path, for the settings form. */
+	private static String[] providerChoices() {
+		List<String> ret = new ArrayList<>();
+		ret.add("");
+		ret.addAll(SshProviders.available().keySet());
+		return ret.toArray(new String[0]);
+	}
+
+	/** The provider to connect with; problems choosing it are IOExceptions that say what to do. */
+	private SshProvider provider() throws IOException {
+		try {
+			return SshProviders.get(getEffectiveImplementation());
+		} catch (IllegalArgumentException | IllegalStateException e) {
+			throw new IOException(e.getMessage(), e);
+		}
 	}
 
 	/** The shared connection, connecting first if needed. */
@@ -593,7 +610,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		return session().pool;
 	}
 
-	/** Guards minaForRandomAccess; not the factory's lock, so a slow connect holds up nothing else. */
+	/** Guards writeCompanion; not the factory's lock, so a slow connect holds up nothing else. */
 	private final Object randomAccessLock = new SerializableLock();
 
 	/** A lock object that doesn't stop the factory being serialized (a plain Object did). */
@@ -601,56 +618,80 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		private static final long serialVersionUID = 1L;
 	}
 	/** See randomAccessFactory(); null until first needed, and after disconnect. */
-	private SftpFileSourceFactory minaForRandomAccess;
+	private SftpFileSourceFactory writeCompanion;
 
-	/** The MINA factory randomAccessFactory() made, or null; for tests. */
+	/** The factory randomAccessFactory() made for a provider that can't write at a position, or null; for tests. */
 	SftpFileSourceFactory randomAccessCompanion() {
 		synchronized (randomAccessLock) {
-			return minaForRandomAccess;
+			return writeCompanion;
 		}
 	}
 
 	/**
-	 * The factory whose channels random access that can write uses: this one
-	 * with MINA or Parley (both write at an offset in one request), and with JSch
-	 * a MINA factory for the same account, connected on first use and
+	 * The factory whose channels random access that can write uses: this one when its
+	 * provider can write at a position in one request, else a factory for the same account
+	 * with another provider that can (parley's first), connected on first use and
 	 * disconnected with this one.
 	 * <p>
-	 * JSch's public API can't write at an offset. JschSftpFile asks the file's
-	 * size and writes at "size + (position - size)", so a size change by
-	 * anyone else in between put the data in the wrong place, silently. MINA
-	 * writes at the position in one request. Read-only random access and
-	 * everything else still use JSch.
-	 * <p>
-	 * The MINA factory isn't registered as a factory session: it's internal.
+	 * JSch can't: its public API has no write at an offset, and JschSftpFile asks the file's
+	 * size and writes at "size + (position - size)", so a size change by anyone else in
+	 * between put the data in the wrong place, silently. Read-only random access and
+	 * everything else stay on this factory's provider. The companion isn't registered as a
+	 * factory session: it's internal.
 	 *
-	 * @throws IOException if MINA can't connect; the message says why it was tried
+	 * @throws IOException when no provider that can write at a position is on the class path
+	 *         (random access writing is refused), or none of them can connect
 	 */
 	SftpFileSourceFactory randomAccessFactory() throws IOException {
-		String impl = getEffectiveImplementation();
-		if( SshProviders.MINA.equals(impl) || SshProviders.PARLEY.equals(impl)) {
+		SshProvider own = provider();
+		if( own.canWriteAtOffset()) {
 			return this;
 		}
 		synchronized (randomAccessLock) {
-			if( minaForRandomAccess == null || !minaForRandomAccess.isConnected()) {
-				SftpFileSourceFactory m = (SftpFileSourceFactory) createThreadSafeCopy();
-				m.implementation = SshProviders.MINA;
-				if( sessionKey != null && !sessionKey.isEmpty()) {
-					m.sessionKey = sessionKey+"#"+SshProviders.MINA;   // never JSch's connection
+			if( writeCompanion == null || !writeCompanion.isConnected()) {
+				List<SshProvider> able = SshProviders.canWriteAtOffset(own.getName());
+				if( able.isEmpty()) {
+					throw new IOException("Random access writing (\"rw\") needs an SSH provider that can write at a position;"
+							+" "+own.getName()+" can't do it safely, and no provider that can is on the class path."
+							+" Add one, such as us.bringardner.parley:parley-files-sftp-parley.");
 				}
-				try {
-					m.connectImpl();
-				} catch (IOException e) {
-					throw new IOException("Random access that can write goes through MINA (JSch can't write at an offset safely),"
-							+" and MINA couldn't connect to "+getUser()+"@"+getHost()+":"+getPort()+": "+e.getMessage(), e);
+				SftpFileSourceFactory m = null;
+				IOException failed = null;
+				for (SshProvider p : able) {
+					try {
+						m = connectCompanion(p.getName());
+						break;
+					} catch (IOException e) {
+						if( failed == null ) {
+							failed = e;
+						} else {
+							failed.addSuppressed(e);
+						}
+					}
 				}
-				if( minaForRandomAccess != null ) {
-					minaForRandomAccess.disConnectImpl();   // the dead one
+				if( m == null ) {
+					throw new IOException("Random access writing goes through a provider that can write at a position ("
+							+own.getName()+" can't do it safely), and none could connect to "+getUser()+"@"+getHost()+":"+getPort()
+							+": "+failed.getMessage(), failed);
 				}
-				minaForRandomAccess = m;
+				if( writeCompanion != null ) {
+					writeCompanion.disConnectImpl();   // the dead one
+				}
+				writeCompanion = m;
 			}
-			return minaForRandomAccess;
+			return writeCompanion;
 		}
+	}
+
+	/** A copy of this factory using provider 'impl', with a session key of its own (never this one's connection), connected. */
+	private SftpFileSourceFactory connectCompanion(String impl) throws IOException {
+		SftpFileSourceFactory m = (SftpFileSourceFactory) createThreadSafeCopy();
+		m.implementation = impl;
+		if( sessionKey != null && !sessionKey.isEmpty()) {
+			m.sessionKey = sessionKey+"#"+impl;
+		}
+		m.connectImpl();
+		return m;
 	}
 
 	/**
@@ -844,17 +885,17 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	private SharedSession connectSession(String key, CompletableFuture<SharedSession> pending) throws IOException {
 		SharedSession s;
 		try {
-			SshProvider provider = SshProviders.get(getEffectiveImplementation());
+			SshProvider provider = provider();
 			logDebug("Connecting to "+getUser()+"@"+getHost()+":"+getPort()+" with "+provider.getName());
 			SshSettings settings = settings();
 			try {
 				s = new SharedSession(key, provider.connect(settings), maxChannels, channelWaitTimeout);   // refs = 1: this factory's
 			} finally {
 				// the connection is logged in (or failed): the key copy isn't needed any more
-				if( settings.privateKey != null ) {
-					Arrays.fill(settings.privateKey, (byte) 0);
+				if( settings.getPrivateKey() != null ) {
+					Arrays.fill(settings.getPrivateKey(), (byte) 0);
 				}
-				settings.password = null;
+				settings.setPassword(null);
 			}
 		} catch (IOException | RuntimeException | Error e) {
 			synchronized (sessions) {
@@ -901,25 +942,25 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 */
 	private SshSettings settings() throws IOException {
 		SshSettings s = new SshSettings();
-		s.host = getHost();
-		s.port = getPort();
-		s.user = getUser();
-		s.useAgent = useAgent;
+		s.setHost(getHost());
+		s.setPort(getPort());
+		s.setUser(getUser());
+		s.setUseAgent(useAgent);
 		if( !useAgent ) {
 			if( password != null && !password.isEmpty()) {
 				char[] pw = secret(PROP_PASSWORD, password);
-				s.password = new String(pw);
+				s.setPassword(new String(pw));
 				Arrays.fill(pw, '\0');
 			} else {
-				s.password = password;
+				s.setPassword(password);
 			}
-			s.privateKey = resolvePrivateKey();
+			s.setPrivateKey(resolvePrivateKey());
 		}
-		s.privateKeyFile = privateKeyFileName;
-		s.knownHosts = knownHosts;
-		s.strictHostKeyChecking = "yes".equals(strictHostKeyChecking);
-		s.connectTimeoutMs = connectTimeout;
-		s.serverAliveIntervalMs = serverAliveInterval;
+		s.setPrivateKeyFile(privateKeyFileName);
+		s.setKnownHosts(knownHosts);
+		s.setStrictHostKeyChecking("yes".equals(strictHostKeyChecking));
+		s.setConnectTimeoutMs(connectTimeout);
+		s.setServerAliveIntervalMs(serverAliveInterval);
 		return s;
 	}
 
@@ -1013,9 +1054,10 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 					.withDefault(""+DEFAULT_CONNECT_TIMEOUT),
 				ConnectionSetting.integer(PROP_SERVER_ALIVE_INTERVAL, "Keep-alive interval (ms)", 0L, null).asAdvanced()
 					.withDefault(""+DEFAULT_SERVER_ALIVE_INTERVAL),
-				ConnectionSetting.choice(PROP_IMPLEMENTATION, "SSH library", "", SshProviders.JSCH, SshProviders.MINA, SshProviders.PARLEY)
+				ConnectionSetting.choice(PROP_IMPLEMENTATION, "SSH library", providerChoices())
 					.asAdvanced().withDefault("")
-					.withDescription("Empty: the system property parley.sftp.implementation, else "+SshProviders.JSCH),
+					.withDescription("The SSH provider: one on the class path. Empty: the system property"
+							+" parley.sftp.implementation, else parley if it is there, else the only one there"),
 				ConnectionSetting.integer(PROP_MAX_CHANNELS, "Most channels at once", 1L, null).asAdvanced()
 					.withDefault(""+DEFAULT_MAX_CHANNELS)
 					.withDescription("Servers limit these: OpenSSH allows 10 per connection"),
@@ -1028,13 +1070,13 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 
 	@Override
 	protected synchronized void disConnectImpl() {
-		SftpFileSourceFactory mina;
+		SftpFileSourceFactory companion;
 		synchronized (randomAccessLock) {
-			mina = minaForRandomAccess;
-			minaForRandomAccess = null;
+			companion = writeCompanion;
+			writeCompanion = null;
 		}
-		if( mina != null ) {
-			mina.disConnectImpl();
+		if( companion != null ) {
+			companion.disConnectImpl();
 		}
 		// safe to call twice: the second call finds link.session == null
 		releaseSession(link);
@@ -1301,18 +1343,26 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 * its whole directory again. A later listing that shows the names
 	 * replaces them.
 	 */
-	void rememberUnknownNames(int uid, int gid) {
+	void rememberUnknownNames(long uid, long gid) {
 		userNames.putIfAbsent(uid, ""+uid);
 		groupNames.putIfAbsent(gid, ""+gid);
 	}
 
 	/** User name for a uid, if a listing has shown it; otherwise null. */
-	String userName(int uid) {
+	/**
+	 * A user or group id as parley-files' FileSourceUser keeps it (an int): the same 32 bits
+	 * SFTP sends, so ids above 2147483647 read as negative there.
+	 */
+	static int idAsInt(long id) {
+		return (int) id;
+	}
+
+	String userName(long uid) {
 		return userNames.get(uid);
 	}
 
 	/** Group name for a gid, if a listing has shown it; otherwise null. */
-	String groupName(int gid) {
+	String groupName(long gid) {
 		return groupNames.get(gid);
 	}
 
@@ -1418,8 +1468,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 			try {
 				SftpAttributes home = sftpReadOnly(c -> c.stat(c.home()));
 				String groupName = groupName(home.getGId());
-				p = new FileSourceUser(home.getUId(), getUser(),
-						home.getGId(), groupName == null ? ""+home.getGId() : groupName);
+				p = new FileSourceUser(idAsInt(home.getUId()), getUser(),
+						idAsInt(home.getGId()), groupName == null ? ""+home.getGId() : groupName);
 			} catch (IOException e) {
 				logDebug("whoAmI: can't read the login directory: "+e);
 				return super.whoAmI();
@@ -1456,9 +1506,9 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		} finally {
 			slot.run();
 		}
-		String output = r.stdout + r.stderr;
-		if( r.exitStatus != 0) {
-			throw new IOException("status="+r.exitStatus+" ("+output+")");
+		String output = r.getStdout() + r.getStderr();
+		if( r.getExitStatus() != 0) {
+			throw new IOException("status="+r.getExitStatus()+" ("+output+")");
 		}
 		return output;
 	}

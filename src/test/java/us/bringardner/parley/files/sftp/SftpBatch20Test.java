@@ -138,9 +138,12 @@ public class SftpBatch20Test {
 		assertNull(otherFailed.get());
 	}
 
-	/** With JSch, a writable random-access file is on a MINA connection to the same account. */
+	/**
+	 * JSch can't write at a position, so with JSch a writable random-access file is on a
+	 * connection to the same account through a provider that can: parley's, when it is there.
+	 */
 	@Test
-	void jschWritesGoThroughMina() throws Exception {
+	void jschWritesGoThroughAProviderThatCan() throws Exception {
 		SftpFileSourceFactory f = own("jsch", null);
 		try {
 			assertNull(f.randomAccessCompanion(), "nothing until it's needed");
@@ -151,7 +154,7 @@ public class SftpBatch20Test {
 			}
 			SftpFileSourceFactory m = f.randomAccessCompanion();
 			assertNotNull(m);
-			assertEquals("mina", m.getEffectiveImplementation());
+			assertEquals("parley", m.getEffectiveImplementation(), "parley first");
 			assertTrue(m.isConnected());
 			assertTrue(m.channelPool().openedCount() > 0, "its channel was used");
 			assertEquals(7, readAt(path, 3), "the byte is where it was written");
@@ -192,15 +195,15 @@ public class SftpBatch20Test {
 		assertNull(mina.randomAccessCompanion());
 	}
 
-	/** An explicit session key gets its own MINA key, so the JSch connection is never shared with MINA. */
+	/** An explicit session key gets its own key for the companion, so the JSch connection is never shared with it. */
 	@Test
-	void explicitKeyGetsItsOwnMinaKey() throws Exception {
+	void explicitKeyGetsItsOwnCompanionKey() throws Exception {
 		String key = "batch20-explicit-"+System.nanoTime();
 		SftpFileSourceFactory f = own("jsch", key);
 		try {
 			SftpFileSourceFactory m = f.randomAccessFactory();
 			assertNotEquals(f.getSessionKey(), m.getSessionKey());
-			assertEquals(key+"#mina", m.getSessionKey());
+			assertEquals(key+"#parley", m.getSessionKey());
 			assertNotEquals(f.getConnection(), m.getConnection());
 		} finally {
 			f.disConnect();
