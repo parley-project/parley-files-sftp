@@ -9,6 +9,8 @@ Needs parley-files 1.1.0.
 - File locks (`lock()`, `tryLock()`, see parley-files). SFTP has no locks of its own, so they reach this
   JVM only (`getLockScope()` is `PROCESS`). The tests jar has `SftpLockTest`, parley-files' lock
   contract, which every provider runs.
+- The suite (from parley-files) checks that `createNewFile()` and `mkdir()` are atomic with each provider,
+  as FileSource's contract now requires.
 
 ## parley-files-sftp 1.0.0 (2026-10-17)
 
