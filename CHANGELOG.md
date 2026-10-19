@@ -1,5 +1,15 @@
 # Changelog
 
+## parley-files-sftp 1.1.0 (unreleased)
+
+Needs parley-files 1.1.0.
+
+### Added
+
+- File locks (`lock()`, `tryLock()`, see parley-files). SFTP has no locks of its own, so they reach this
+  JVM only (`getLockScope()` is `PROCESS`). The tests jar has `SftpLockTest`, parley-files' lock
+  contract, which every provider runs.
+
 ## parley-files-sftp 1.0.0 (2026-10-17)
 
 BjlFileSystemSftp (`us.bringardner:bjl_file_system_sftp` 1.0.0-SNAPSHOT) is now **parley-files-sftp**,

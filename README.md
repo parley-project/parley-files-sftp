@@ -162,6 +162,13 @@ a write differently; that is FTP's rule, not this one.) `getCanonicalPath()` fol
 link that leads nowhere keeps its own path, as `java.io.File`'s does. See
 [Links](https://github.com/parley-project/parley-files#links) in parley-files.
 
+## Locking
+
+SFTP (version 3, what servers offer) has no file locks, so `lock()` and `tryLock()` (see parley-files) keep the
+default: locks within this JVM (`getLockScope()` is `PROCESS`). They keep threads and code in one process apart,
+not other clients of the server. Applications that need more build it on top (parley-net's locking). The suite's
+`SftpLockTest` runs parley-files' lock contract with each provider.
+
 ## Caching
 
 Directory listings are never cached: every `listFiles()` asks the server, like `java.io.File`, so a listing always shows changes made through other objects or by other programs. The listing carries each child's details, so calling `isDirectory()` or `length()` on its results costs nothing more.
