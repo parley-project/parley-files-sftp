@@ -65,6 +65,16 @@ import us.bringardner.parley.core.util.Hex;
  * on the class path. The "implementation" connection property (or the system
  * property parley.sftp.implementation) chooses one; without it, parley's is used
  * if it is there, else the only one there.
+ * <p>
+ * <h2>Locks, atomic create and FileChannel</h2>
+ * <ul>
+ * <li><b>Locks:</b> {@code PROCESS} scope: this JVM only. SFTP (version 3, what servers offer) has no file locks, so other clients of the server aren't kept out. Range locks work within the JVM.</li>
+ * <li><b>Atomic create:</b> {@code createNewFile()} is atomic: an exclusive open ({@code SSH_FXF_EXCL}) with the parley-ssh and MINA providers; JSch can't send that flag, so it writes an empty file under its own name and moves it to the path with a hard link ({@code hardlink@openssh.com}) or a plain rename, which the server refuses if the path is taken (only a server with OpenSSH's replacing rename but no hard links gets a check-then-create). {@code mkdir()} is atomic.</li>
+ * <li><b>FileChannel:</b> reads and writes through the file's streams and random access (JSch can't write at a position).</li>
+ * <li><b>map():</b> {@code READ_ONLY} and {@code PRIVATE} map a local copy of the region, read when it is mapped; {@code READ_WRITE} throws {@code UnsupportedOperationException} (a copy can't write back).</li>
+ * <li><b>force():</b> sends what is held, then asks the server to sync the file ({@code fsync@openssh.com}) where the provider and the server can: parley-ssh and MINA send it when the server offers it; JSch can't, so it only sends the data.</li>
+ * </ul>
+ * See parley-files' README ("Locking") for the rules every file system keeps.
  */
 public class SftpFileSourceFactory extends FileSourceFactory {
 

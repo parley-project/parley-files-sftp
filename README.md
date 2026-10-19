@@ -164,6 +164,22 @@ link that leads nowhere keeps its own path, as `java.io.File`'s does. See
 
 ## Locking
 
+In short, for `SftpFileSourceFactory`, whichever provider:
+
+| | |
+|---|---|
+| Locks | `PROCESS`: this JVM only (SFTP has no locks). Range locks work within the JVM. |
+| Atomic create | `createNewFile()` and `mkdir()` are atomic (see the provider for how) |
+| FileChannel | through the file's streams and random access |
+| `map()` | `READ_ONLY` and `PRIVATE` map a local copy of the region, read when it is mapped; `READ_WRITE` throws `UnsupportedOperationException` |
+| `force()` | sends what is held, then `fsync@openssh.com` where the provider and the server can |
+
+| Provider | Atomic `createNewFile()` | `force()` |
+|---|---|---|
+| parley-ssh | exclusive open (`SSH_FXF_EXCL`) | `fsync@openssh.com` when the server offers it |
+| MINA | exclusive open (`SSH_FXF_EXCL`) | `fsync@openssh.com` when the server offers it |
+| JSch | an empty file under its own name, then a hard link (`hardlink@openssh.com`) or a plain rename onto the path, which the server refuses if it is taken; check-then-create only on a server with the replacing rename and no hard links | only sends the data (JSch can't send `fsync@openssh.com`) |
+
 SFTP (version 3, what servers offer) has no file locks, so `lock()` and `tryLock()` (see parley-files) keep the
 default: locks within this JVM (`getLockScope()` is `PROCESS`). They keep threads and code in one process apart,
 not other clients of the server. Applications that need more build it on top (parley-net's locking). The suite's
