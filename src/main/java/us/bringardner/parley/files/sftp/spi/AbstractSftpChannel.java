@@ -92,40 +92,64 @@ public abstract class AbstractSftpChannel implements SftpChannel {
 		};
 	}
 
-	/** {@code out} with its errors turned into the types SftpChannel promises. */
+	/**
+	 * {@code out} with its errors turned into the types SftpChannel promises. It is
+	 * {@link us.bringardner.parley.files.Syncable} as {@code out} is (otherwise sync only flushes).
+	 */
 	protected final OutputStream guardedOutput(String path, OutputStream out) {
-		return new FilterOutputStream(out) {
-			@Override
-			public void write(int b) throws IOException {
-				guard(path, () -> {
-					out.write(b);
-					return null;
-				});
-			}
+		return new GuardedOutput(out, path);
+	}
 
-			@Override
-			public void write(byte[] b, int off, int len) throws IOException {
-				guard(path, () -> {
-					out.write(b, off, len);
-					return null;
-				});
-			}
+	private final class GuardedOutput extends FilterOutputStream implements us.bringardner.parley.files.Syncable {
+		private final String path;
 
-			@Override
-			public void flush() throws IOException {
-				guard(path, () -> {
+		GuardedOutput(OutputStream out, String path) {
+			super(out);
+			this.path = path;
+		}
+
+		@Override
+		public void sync() throws IOException {
+			guard(path, () -> {
+				if( out instanceof us.bringardner.parley.files.Syncable ) {
+					((us.bringardner.parley.files.Syncable) out).sync();
+				} else {
 					out.flush();
-					return null;
-				});
-			}
+				}
+				return null;
+			});
+		}
 
-			@Override
-			public void close() throws IOException {
-				guard(path, () -> {
-					out.close();
-					return null;
-				});
-			}
-		};
+		@Override
+		public void write(int b) throws IOException {
+			guard(path, () -> {
+				out.write(b);
+				return null;
+			});
+		}
+
+		@Override
+		public void write(byte[] b, int off, int len) throws IOException {
+			guard(path, () -> {
+				out.write(b, off, len);
+				return null;
+			});
+		}
+
+		@Override
+		public void flush() throws IOException {
+			guard(path, () -> {
+				out.flush();
+				return null;
+			});
+		}
+
+		@Override
+		public void close() throws IOException {
+			guard(path, () -> {
+				out.close();
+				return null;
+			});
+		}
 	}
 }

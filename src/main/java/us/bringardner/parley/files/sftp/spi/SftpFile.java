@@ -28,6 +28,16 @@ public interface SftpFile extends Closeable {
 	/** Sets the file's size. */
 	void truncate(long size) throws IOException;
 
+	/**
+	 * Ask the server to put what was written to this file on its storage
+	 * ({@code fsync@openssh.com}), if the provider and the server can. The default does nothing:
+	 * writes have already been sent.
+	 * @throws IOException if the server refuses
+	 * @since 1.1.0
+	 */
+	default void sync() throws IOException {
+	}
+
 	/** False if it was opened read-only. */
 	boolean isWritable();
 

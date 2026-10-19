@@ -245,6 +245,14 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 		return handle;
 	}
 
+	/** After a save: asks the server to sync the file where it can ({@code fsync@openssh.com}). */
+	@Override
+	public void sync() throws IOException {
+		if( handle != null ) {
+			handle.sync();
+		}
+	}
+
 	/**
 	 * Saves pending changes, then closes the remote file and this
 	 * controller's SFTP channel.

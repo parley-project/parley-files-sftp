@@ -11,6 +11,10 @@ Needs parley-files 1.1.0.
   contract, which every provider runs.
 - The suite (from parley-files) checks that `createNewFile()` and `mkdir()` are atomic with each provider,
   as FileSource's contract now requires.
+- Output streams and random access are `Syncable` (parley-files): `sync()`, and so `FileChannel.force()`,
+  sends what is held and asks the server to sync the file (`fsync@openssh.com`) where the provider and the
+  server can. The SPI's `SftpFile.sync()` (default: nothing more) and a provider's `write()` stream that
+  is `Syncable` are the hooks.
 
 ## parley-files-sftp 1.0.0 (2026-10-17)
 

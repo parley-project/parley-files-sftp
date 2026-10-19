@@ -67,7 +67,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	private static final long serialVersionUID = 1L;
 
 
-	private class SftpOutputStream extends OutputStream {
+	private class SftpOutputStream extends OutputStream implements us.bringardner.parley.files.Syncable {
 
 		/** Each stream has its own SFTP channel, so streams can be used from any thread. */
 		private final SftpChannel mySftp;
@@ -78,6 +78,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		 */
 		private final String tempPath;
 		private final String targetPath;
+		/** The provider's stream, under any buffer: it may be Syncable. */
+		private final OutputStream opened;
 
 		SftpOutputStream (boolean append) throws IOException {
 			this(append, 0);
@@ -93,21 +95,22 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			mySftp = factory.openSftp();
 			String temp = null;
 			String target = null;
-			OutputStream opened;
+			OutputStream o;
 			try {
 				if( !append && factory.isSafeOverwrite()) {
 					target = replaceTarget();
 					temp = tempPathFor(target);
-					opened = mySftp.write(temp, false);
+					o = mySftp.write(temp, false);
 				} else {
-					opened = mySftp.write(path, append);
+					o = mySftp.write(path, append);
 				}
 			} catch (IOException | RuntimeException e) {
 				// don't leak the channel when the open fails
 				mySftp.close();
 				throw e;
 			}
-			this.out = bufferSize > 0 ? new BufferedOutputStream(opened, bufferSize) : opened;
+			this.opened = o;
+			this.out = bufferSize > 0 ? new BufferedOutputStream(o, bufferSize) : o;
 			tempPath = temp;
 			targetPath = target;
 		}
@@ -181,6 +184,19 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		@Override
 		public void flush() throws IOException {
 			out.flush();
+		}
+
+		/**
+		 * Sends what is held, then asks the server to put the file on its storage where the provider
+		 * and the server can ({@code fsync@openssh.com}). While a safe overwrite is under way that is
+		 * the temporary file, which takes the target's name when the stream is closed.
+		 */
+		@Override
+		public void sync() throws IOException {
+			out.flush();
+			if( opened instanceof us.bringardner.parley.files.Syncable ) {
+				((us.bringardner.parley.files.Syncable) opened).sync();
+			}
 		}
 
 		@Override
