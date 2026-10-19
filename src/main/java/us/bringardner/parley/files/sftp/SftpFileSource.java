@@ -1657,4 +1657,16 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		return false;
 	}
 
+
+	/**
+	 * SFTP: locks reach this JVM only; createNewFile and mkdir atomic (the server's exclusive open
+	 * and mkdir); replace isn't atomic yet (delete, then rename); sync is durable only where the
+	 * server offers {@code fsync@openssh.com} and the provider uses it, so it isn't promised; one
+	 * server, so operations are applied in one order.
+	 * @since 1.1.0
+	 */
+	@Override
+	public us.bringardner.parley.files.FileSourceCapabilities getCapabilities() {
+		return us.bringardner.parley.files.FileSourceCapabilities.defaults(getLockScope()).withOrderedOperations(true);
+	}
 }
