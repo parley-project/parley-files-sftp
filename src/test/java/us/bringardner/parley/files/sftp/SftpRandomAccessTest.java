@@ -182,6 +182,33 @@ public class SftpRandomAccessTest {
 		assertArrayEquals(data(300), readAll(f), "file unchanged");
 	}
 
+	/**
+	 * Opened with a mode, the controller opens the file on the server, so the stream doesn't check
+	 * canRead()/canWrite() again; the one-argument constructor opens lazily and leaves it to the stream.
+	 */
+	@ParameterizedTest
+	@MethodSource("us.bringardner.parley.files.sftp.TestServer#providers")
+	void theServerDecidesAtOpen(String impl) throws Exception {
+		FileSource f = write(impl, "access.bin", data(10));
+		try (SftpRandomAccessIoController io = new SftpRandomAccessIoController(f, "r")) {
+			assertTrue(io.checksAccessOnOpen());
+		}
+		try (SftpRandomAccessIoController io = new SftpRandomAccessIoController(f)) {
+			assertFalse(io.checksAccessOnOpen());
+		}
+		// a file the server won't let this login write is still refused at open, by the server
+		org.junit.jupiter.api.Assumptions.assumeFalse("root".equals(System.getProperty("user.name")), "root writes anything");
+		assertTrue(f.setReadOnly());
+		try {
+			assertThrows(FileNotFoundException.class, () -> f.getRandomAccessStream("rw"));
+			try (IRandomAccessStream r = f.getRandomAccessStream("r")) {
+				assertEquals(0, r.read());
+			}
+		} finally {
+			f.setWritable(true);
+		}
+	}
+
 	@ParameterizedTest
 	@MethodSource("us.bringardner.parley.files.sftp.TestServer#providers")
 	void openErrorsLikeRandomAccessFile(String impl) throws IOException {

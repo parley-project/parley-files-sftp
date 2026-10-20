@@ -56,6 +56,8 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 	private boolean writeAccepted;
 	/** Opened with mode "r": the handle is read-only. */
 	private final boolean readOnly;
+	/** The mode constructor opened the file on the server now (see checksAccessOnOpen()). */
+	private final boolean openedNow;
 
 
 	/**
@@ -70,6 +72,7 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 		this.chunkSize = myFactory.getChunkSize();
 		channel = myFactory.openSftp();
 		readOnly = false;
+		openedNow = false;
 	}
 
 	/**
@@ -101,6 +104,7 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 		myFactory = (SftpFileSourceFactory) file.getFileSourceFactory();
 		this.chunkSize = chunkSize > 0 ? chunkSize : myFactory.getChunkSize();
 		readOnly = mode.equals("r");
+		openedNow = true;
 		channel = myFactory.openSftp();
 		String path = file.getAbsolutePath();
 		try {
@@ -118,7 +122,18 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 			if( a.isDir()) {
 				throw new FileNotFoundException(path+" (Is a directory)");
 			}
-			handle = channel.open(path, !readOnly);
+			try {
+				handle = channel.open(path, !readOnly);
+			} catch (IOException e) {
+				// As RandomAccessFile: any error opening the file is FileNotFoundException. Servers
+				// differ in how they refuse (MINA's says SSH_FX_FAILURE for a file it won't let
+				// this login write), and the stream no longer checks canWrite() first.
+				if( e instanceof FileNotFoundException || e instanceof NoSuchFileException || e instanceof AccessDeniedException ) {
+					throw e;
+				}
+				throw (IOException) new FileNotFoundException(path+" (Can't open it "
+						+(readOnly ? "for reading" : "for reading and writing")+": "+e.getMessage()+")").initCause(e);
+			}
 		} catch (IOException e) {
 			channel.close();
 			throw SftpFileSource.openError(path, e);
@@ -126,6 +141,20 @@ public class SftpRandomAccessIoController extends AbstractRandomAccessIoControll
 			channel.close();
 			throw e;
 		}
+	}
+
+	/**
+	 * true when opened with a mode: the file was opened on the server then, read-only or for reading and
+	 * writing, so the server itself said whether this login may (a directory, a missing file in "r"
+	 * mode, or one it won't open that way throws FileNotFoundException). FileSourceRandomAccessStream
+	 * then doesn't check canRead()/canWrite() again; those are guessed from the owner and permission
+	 * bits, which are wrong when the login isn't the owner the server shows or the server has rules of
+	 * its own. false for the one-argument constructor, which opens the file lazily.
+	 * @since 1.1.0
+	 */
+	@Override
+	public boolean checksAccessOnOpen() {
+		return openedNow;
 	}
 
 	/** @return the chunk size this stream reads and writes in */

@@ -16,6 +16,15 @@ Needs parley-files 1.1.0.
   server can. The SPI's `SftpFile.sync()` (default: nothing more) and a provider's `write()` stream that
   is `Syncable` are the hooks.
 
+### Changed (no code change needed)
+
+- `getRandomAccessStream(mode)` no longer checks `canRead()`/`canWrite()` before opening: the controller opens the
+  file on the server in that mode, so the server decides (`SftpRandomAccessIoController.checksAccessOnOpen()`, from
+  parley-files 1.1.0). Those were guessed from the owner and permission bits and refused files the server lets a
+  login that isn't the owner write. Missing files, directories and files the server won't open that way still throw
+  `FileNotFoundException`: any error the server gives for opening the file in that mode is one now, as with
+  `RandomAccessFile` (servers refuse differently; MINA's says `SSH_FX_FAILURE`).
+
 ## parley-files-sftp 1.0.0 (2026-10-17)
 
 BjlFileSystemSftp (`us.bringardner:bjl_file_system_sftp` 1.0.0-SNAPSHOT) is now **parley-files-sftp**,
