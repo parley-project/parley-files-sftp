@@ -1659,14 +1659,17 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 
 	/**
-	 * SFTP: locks reach this JVM only; createNewFile and mkdir atomic (the server's exclusive open
-	 * and mkdir); replace isn't atomic yet (delete, then rename); sync is durable only where the
-	 * server offers {@code fsync@openssh.com} and the provider uses it, so it isn't promised; one
-	 * server, so operations are applied in one order.
+	 * SFTP: locks reach this JVM only; mkdir atomic (the server's mkdir); createNewFile atomic
+	 * where the provider can make it so with this server ({@link SftpChannel#createNewIsAtomic()},
+	 * asked once per factory; not promised if the server can't be asked); replace isn't atomic
+	 * (the default: dest moved aside, then the rename); sync is durable only where the server
+	 * offers {@code fsync@openssh.com} and the provider uses it, so it isn't promised; one server,
+	 * so operations are applied in one order.
 	 * @since 1.1.0
 	 */
 	@Override
 	public us.bringardner.parley.files.FileSourceCapabilities getCapabilities() {
-		return us.bringardner.parley.files.FileSourceCapabilities.defaults(getLockScope()).withOrderedOperations(true);
+		return us.bringardner.parley.files.FileSourceCapabilities.defaults(getLockScope()).withOrderedOperations(true)
+				.withAtomicCreateNewFile(factory.createNewIsAtomic());
 	}
 }

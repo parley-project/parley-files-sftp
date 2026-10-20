@@ -191,6 +191,11 @@ class PooledSftpChannel implements SftpChannel {
 	}
 
 	@Override
+	public boolean createNewIsAtomic() throws IOException {
+		return call(() -> channel.createNewIsAtomic());
+	}
+
+	@Override
 	public SftpFile open(String path, boolean write) throws IOException {
 		SftpFile f = call(() -> channel.open(path, write));
 		opened();

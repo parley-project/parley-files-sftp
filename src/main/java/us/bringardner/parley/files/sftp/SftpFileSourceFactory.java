@@ -630,6 +630,27 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 * 'op' should make its requests and return: a stream or file it opens on
 	 * the channel stops working when it returns. Use the FileSource streams.
 	 */
+	/** What the provider says of createNew with this server, once known. */
+	private volatile Boolean createNewAtomic;
+
+	/**
+	 * Whether createNewFile is atomic with this server and provider ({@link SftpChannel#createNewIsAtomic()}),
+	 * asked once; false (not promised) if the server can't be asked.
+	 * @since 1.1.0
+	 */
+	public boolean createNewIsAtomic() {
+		Boolean b = createNewAtomic;
+		if( b == null ) {
+			try {
+				b = sftp(SftpChannel::createNewIsAtomic);
+				createNewAtomic = b;
+			} catch (IOException | RuntimeException e) {
+				return false; // not known now: not promised (asked again next time)
+			}
+		}
+		return b;
+	}
+
 	public <T> T sftp(SftpOperation<T> op) throws IOException {
 		try (SftpChannel c = channelPool().borrow(SftpChannelPool.Use.CALL)) {
 			return op.run(c);

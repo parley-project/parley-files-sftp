@@ -95,6 +95,17 @@ public interface SftpChannel extends Closeable {
 	boolean createNew(String path) throws IOException;
 
 	/**
+	 * Whether {@link #createNew(String)} is atomic with this channel's server: of several callers
+	 * racing to create one path, exactly one gets true. The default says yes (SFTP's exclusive
+	 * open); a provider that can't always do it says so.
+	 *
+	 * @since 1.1.0
+	 */
+	default boolean createNewIsAtomic() throws IOException {
+		return true;
+	}
+
+	/**
 	 * Opens an existing file for reading and writing at any position.
 	 *
 	 * @param write false opens it read-only; writes then fail

@@ -170,7 +170,7 @@ In short, for `SftpFileSourceFactory`, whichever provider:
 |---|---|
 | Locks | `PROCESS`: this JVM only (SFTP has no locks). Range locks work within the JVM. |
 | Atomic create | `createNewFile()` and `mkdir()` are atomic (see the provider for how) |
-| Capabilities (`getCapabilities()`) | `PROCESS` locks; atomic create and mkdir; replace (`renameTo(dest, true)`) not atomic: delete, then rename; durable sync not promised (it depends on the server and provider); operations in one order |
+| Capabilities (`getCapabilities()`) | `PROCESS` locks; atomic mkdir; atomic create where the provider can make it so with the server (`SftpChannel.createNewIsAtomic()`: JSch can't with a server that offers `posix-rename@openssh.com` but no hard links); replace (`renameTo(dest, true)`) not atomic: dest moved aside, then the rename; durable sync not promised (it depends on the server and provider); operations in one order |
 | FileChannel | through the file's streams and random access |
 | `map()` | `READ_ONLY` and `PRIVATE` map a local copy of the region, read when it is mapped; `READ_WRITE` throws `UnsupportedOperationException` |
 | `force()` | sends what is held, then `fsync@openssh.com` where the provider and the server can |
