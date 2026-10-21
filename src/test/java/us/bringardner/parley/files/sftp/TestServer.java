@@ -35,7 +35,7 @@ import com.sshtools.server.SshServer;
  * unittest4 (see the README's Testing section). Tests fail if it isn't there.</li>
  * <li>"embedded": an embedded Maverick server, started on a free port, with
  * one account (unittest1 / 0000) whose home directory is
- * target/embedded-sftp/home. It needs nothing installed, so CI can run the
+ * embedded-sftp/home in the test run's temporary folder. It needs nothing installed, so CI can run the
  * tests.</li>
  * </ul>
  * Tests that need real OpenSSH (links, Unix permissions and groups, other

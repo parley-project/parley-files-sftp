@@ -25,7 +25,7 @@ Needs parley-files 1.1.0.
   `FileNotFoundException`: any error the server gives for opening the file in that mode is one now, as with
   `RandomAccessFile` (servers refuse differently; MINA's says `SSH_FX_FAILURE`).
 
-## parley-files-sftp 1.0.0 (2026-10-17)
+## parley-files-sftp 1.0.0 (2026-10-21)
 
 BjlFileSystemSftp (`us.bringardner:bjl_file_system_sftp` 1.0.0-SNAPSHOT) is now **parley-files-sftp**,
 part of the Parley library family.
