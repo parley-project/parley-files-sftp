@@ -1,6 +1,6 @@
 # Changelog
 
-## parley-files-sftp 1.0.0 (2026-10-17)
+## parley-files-sftp 1.0.0 (2026-10-21)
 
 BjlFileSystemSftp (`us.bringardner:bjl_file_system_sftp` 1.0.0-SNAPSHOT) is now **parley-files-sftp**,
 part of the Parley library family.
