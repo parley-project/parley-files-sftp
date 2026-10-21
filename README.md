@@ -3,8 +3,8 @@
 > parley-files-sftp is part of **Parley**, a family of Java libraries for implementing internet protocols.
 > It was previously `us.bringardner:bjl_file_system_sftp` (BjlFileSystemSftp), with packages under
 > `us.bringardner.io.filesource.sftp`; they are now `us.bringardner.parley.files.sftp`. The SSH library
-> named `bjl` is now `parley`, and the `bjl.sftp.*` system properties are now `parley.sftp.*`; the old
-> names still work.
+> named `bjl` is now `parley` (`bjl` still works as an implementation name). The `bjl.sftp.*` system
+> properties became `parley.sftp.*`, and in 2.0.0 `parley.files.sftp.*`; the old names are no longer read.
 
 An SSH/SFTP implementation of the parley-files `FileSource` interface. The SSH library it uses is a
 **provider** found on the class path, so it is chosen when the program is deployed, not when it is
@@ -37,7 +37,7 @@ Each is a project of its own, released on its own.
 A provider is available when its jar is on the class path. Which one a factory uses:
 
 1. The one it names: the `implementation` connection property, else the system property
-   `parley.sftp.implementation`.
+   `parley.files.sftp.implementation`.
 2. Nothing named: `parley`, if it is there.
 3. Otherwise the only one there. With several and none named, connecting fails and asks for a name;
    with none, it fails and says which jars to add.
@@ -47,7 +47,7 @@ another library, for example if parley-ssh has a bug that matters to it, without
 add `parley-files-sftp-jsch` (or `-mina`) to the class path and set
 
 ```
-java -Dparley.sftp.implementation=jsch ...
+java -Dparley.files.sftp.implementation=jsch ...
 ```
 
 or the `implementation` connection property of one factory:
@@ -113,7 +113,7 @@ provider project runs it with its own tests:
                 </dependenciesToScan>
                 <!-- only if the library can't do something: see below -->
                 <systemPropertyVariables>
-                    <parley.sftp.test.unsupported>writeAtPosition</parley.sftp.test.unsupported>
+                    <parley.files.sftp.test.unsupported>writeAtPosition</parley.files.sftp.test.unsupported>
                 </systemPropertyVariables>
             </configuration>
         </plugin>
@@ -136,7 +136,7 @@ provider project runs it with its own tests:
 ```
 
 The provider must be the only one on the test class path. A library that can't do something names it
-in `parley.sftp.test.unsupported` (comma separated): `writeAtPosition`, `agentLogin`. The suite skips
+in `parley.files.sftp.test.unsupported` (comma separated): `writeAtPosition`, `agentLogin`. The suite skips
 those tests, and the provider's own tests should check that it refuses them with a clear `IOException`.
 
 ## Other connection properties
@@ -200,12 +200,12 @@ A file's own details (whether it exists, its size, times, type and owner) are ca
 
 Changes made through the same factory (writing, deleting, renaming, changing permissions, through any `FileSource` of it) are always seen at once, whatever the setting. A change made through another connection is seen when the time passes.
 
-Set it per factory with `setAttributeCacheTtl(millis)` or the `attributeCacheTtl` connection property, or for the whole JVM with `-Dparley.sftp.attributeCacheTtl=0`. A factory's own setting wins; changing it applies at once, to files already created too.
+Set it per factory with `setAttributeCacheTtl(millis)` or the `attributeCacheTtl` connection property, or for the whole JVM with `-Dparley.files.sftp.attributeCacheTtl=0`. A factory's own setting wins; changing it applies at once, to files already created too.
 
 ## Testing
 
 `mvn package` in a provider project runs the suite and that project's own tests. Which SSH server the tests talk to is chosen once per run with
-`-Dparley.sftp.test.server`, in any project that runs the suite:
+`-Dparley.files.sftp.test.server`, in any project that runs the suite:
 
 | Value | Server |
 |---|---|

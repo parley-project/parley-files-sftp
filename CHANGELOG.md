@@ -1,5 +1,15 @@
 # Changelog
 
+## parley-files-sftp 2.0.0 (unreleased)
+
+### Changed (needs a configuration change)
+
+- **Property names** (Parley 2.0.0): `parley.sftp.implementation`, `parley.sftp.attributeCacheTtl` and
+  `parley.sftp.bufferSize` are `parley.files.sftp.implementation`, `.attributeCacheTtl` and `.bufferSize`, and the
+  test suite's `parley.sftp.test.server` / `.unsupported` are `parley.files.sftp.test.server` / `.unsupported`.
+  The `bjl.sftp.*` names are no longer read (`LEGACY_SYSTEM_PROPERTY` and
+  `LEGACY_SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL` are gone); `bjl` still works as an implementation name.
+
 ## parley-files-sftp 1.1.0 (unreleased)
 
 Needs parley-files 1.1.0.

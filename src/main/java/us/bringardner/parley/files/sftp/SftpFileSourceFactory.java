@@ -63,7 +63,7 @@ import us.bringardner.parley.core.util.Hex;
  * FileSource factory for SFTP. The SSH library is a provider found at run time
  * (see {@link SshProviders}): parley-files-sftp-parley-ssh, -jsch, -mina or any other
  * on the class path. The "implementation" connection property (or the system
- * property parley.sftp.implementation) chooses one; without it, parley's is used
+ * property parley.files.sftp.implementation) chooses one; without it, parley's is used
  * if it is there, else the only one there.
  * <p>
  * <h2>Locks, atomic create and FileChannel</h2>
@@ -130,9 +130,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 */
 	public static final String PROP_ATTRIBUTE_CACHE_TTL = "attributeCacheTtl";
 	/** System property with the JVM-wide default for PROP_ATTRIBUTE_CACHE_TTL. */
-	public static final String SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL = "parley.sftp.attributeCacheTtl";
-	/** The older name of SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL, still read when the new one isn't set. */
-	public static final String LEGACY_SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL = "bjl.sftp.attributeCacheTtl";
+	public static final String SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL = "parley.files.sftp.attributeCacheTtl";
 	public static final long DEFAULT_ATTRIBUTE_CACHE_TTL = 2000;
 	public static final int DEFAULT_PORT = 22;
 	public static final int DEFAULT_CONNECT_TIMEOUT = 30_000;
@@ -311,13 +309,13 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 */
 	public static final String PROP_BUFFER_SIZE = "bufferSize";
 	/** System property with the JVM-wide default for PROP_BUFFER_SIZE. */
-	public static final String SYSTEM_PROPERTY_BUFFER_SIZE = "parley.sftp.bufferSize";
+	public static final String SYSTEM_PROPERTY_BUFFER_SIZE = "parley.files.sftp.bufferSize";
 	/** The smallest and largest size {@link #setBufferSize(int)} and PROP_BUFFER_SIZE accept. */
 	public static final int MIN_BUFFER_SIZE = 1024;
 	public static final int MAX_BUFFER_SIZE = 16*1024*1024;
 
 	/**
-	 * The default for new factories: the system property parley.sftp.bufferSize if it
+	 * The default for new factories: the system property parley.files.sftp.bufferSize if it
 	 * is a number (kept within MIN_BUFFER_SIZE and MAX_BUFFER_SIZE), otherwise
 	 * DEFAULT_CHUNK_SIZE.
 	 */
@@ -512,13 +510,10 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 
 	/**
 	 * The JVM-wide default for the attribute cache time: the system property
-	 * parley.sftp.attributeCacheTtl (or the older bjl.sftp.attributeCacheTtl) if it's a number, otherwise 2000 ms.
+	 * parley.files.sftp.attributeCacheTtl if it's a number, otherwise 2000 ms.
 	 */
 	public static long defaultAttributeCacheTtl() {
 		String v = System.getProperty(SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL);
-		if( v == null || v.trim().isEmpty()) {
-			v = System.getProperty(LEGACY_SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL);
-		}
 		if( v != null && !v.trim().isEmpty()) {
 			try {
 				return Long.parseLong(v.trim());
@@ -1005,7 +1000,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 				ConnectionSetting.choice(PROP_IMPLEMENTATION, "SSH library", providerChoices())
 					.asAdvanced().withDefault("")
 					.withDescription("The SSH provider: one on the class path. Empty: the system property"
-							+" parley.sftp.implementation, else parley if it is there, else the only one there"),
+							+" parley.files.sftp.implementation, else parley if it is there, else the only one there"),
 				ConnectionSetting.integer(PROP_MAX_CHANNELS, "Most channels at once", 1L, null).asAdvanced()
 					.withDefault(""+DEFAULT_MAX_CHANNELS)
 					.withDescription("Servers limit these: OpenSSH allows 10 per connection"),

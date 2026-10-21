@@ -27,9 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class SshProviders {
 
 	/** System property naming the provider to use when a factory doesn't name one. */
-	public static final String SYSTEM_PROPERTY = "parley.sftp.implementation";
-	/** The older name of {@link #SYSTEM_PROPERTY}, still read when the new one isn't set. */
-	public static final String LEGACY_SYSTEM_PROPERTY = "bjl.sftp.implementation";
+	public static final String SYSTEM_PROPERTY = "parley.files.sftp.implementation";
 	/** parley-ssh's provider (parley-files-sftp-parley-ssh), used when several are available and none is named. */
 	public static final String PARLEY = "parley";
 	/** The older name of {@link #PARLEY}, still accepted. */
@@ -86,9 +84,6 @@ public final class SshProviders {
 	/** @return the provider the system property names, or null if it isn't set */
 	public static String configuredName() {
 		String name = System.getProperty(SYSTEM_PROPERTY);
-		if( name == null || name.trim().isEmpty()) {
-			name = System.getProperty(LEGACY_SYSTEM_PROPERTY);
-		}
 		return name == null || name.trim().isEmpty() ? null : canonicalName(name);
 	}
 

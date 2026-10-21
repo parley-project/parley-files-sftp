@@ -27,7 +27,7 @@ import com.sshtools.server.SshServer;
 
 /**
  * The SSH server the tests connect to, chosen once per test run by the
- * system property parley.sftp.test.server:
+ * system property parley.files.sftp.test.server:
  * <ul>
  * <li>"auto" (the default): the OpenSSH server on localhost:22 if unittest1 /
  * 0000 can log in there, otherwise the embedded server.</li>
@@ -45,7 +45,7 @@ import com.sshtools.server.SshServer;
  */
 public final class TestServer {
 
-	static final String SYSTEM_PROPERTY = "parley.sftp.test.server";
+	static final String SYSTEM_PROPERTY = "parley.files.sftp.test.server";
 	static final String HOST = "localhost";
 	static final String USER = "unittest1";
 	static final String PASSWORD = "0000";
@@ -126,7 +126,7 @@ public final class TestServer {
 	 * what its library can't do, comma separated: {@value #WRITE_AT_POSITION}, {@value #AGENT_LOGIN}.
 	 * The suite skips those tests; the provider's own tests check that it refuses them.
 	 */
-	public static final String UNSUPPORTED_PROPERTY = "parley.sftp.test.unsupported";
+	public static final String UNSUPPORTED_PROPERTY = "parley.files.sftp.test.unsupported";
 	/** Writing at a position in a file (random access writing). */
 	public static final String WRITE_AT_POSITION = "writeAtPosition";
 	/** Logging in with an ssh-agent (auth=Agent). */
