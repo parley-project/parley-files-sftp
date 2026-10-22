@@ -12,7 +12,6 @@
 	</parent>
 
 	<artifactId>parley-files-sftp</artifactId>
-	<version>2.0.0-SNAPSHOT</version>
 	<name>Parley Files SFTP</name>
 	<description>A parley-files FileSource implementation for SSH/SFTP servers, found at runtime through
 		ServiceLoader. The SSH library is a provider found on the class path: parley-files-sftp-parley-ssh
@@ -23,9 +22,7 @@
 	<properties>
 		<!-- Written to the jar manifest as Automatic-Module-Name -->
 		<parley.moduleName>us.bringardner.parley.files.sftp</parley.moduleName>
-		<parley.version>2.0.0-SNAPSHOT</parley.version>
 		<!-- parley-files 1.1.0 adds file locks -->
-		<parley-files.version>2.0.0-SNAPSHOT</parley-files.version>
 	</properties>
 
 	<!-- GitHub Packages. Maven Central releases use: mvn -Prelease clean deploy -->
@@ -89,18 +86,18 @@
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
 			<artifactId>parley-core</artifactId>
-			<version>${parley.version}</version>
+			<version>${project.version}</version>
 		</dependency>
 		<!-- Used by providers (IoUtils) -->
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
 			<artifactId>parley-io</artifactId>
-			<version>${parley.version}</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
 			<artifactId>parley-files</artifactId>
-			<version>${parley-files.version}</version>
+			<version>${project.version}</version>
 		</dependency>
 
 		<!-- The suite's own dependencies. A provider that runs the suite names these too
@@ -108,7 +105,7 @@
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
 			<artifactId>parley-files</artifactId>
-			<version>${parley-files.version}</version>
+			<version>${project.version}</version>
 			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>
@@ -141,7 +138,7 @@
 		<dependency>
 			<groupId>us.bringardner.parley</groupId>
 			<artifactId>parley-ssh</artifactId>
-			<version>${parley.version}</version>
+			<version>${project.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<!-- On Windows the embedded server is MINA's (EmbeddedMinaServer); it registers no provider -->
