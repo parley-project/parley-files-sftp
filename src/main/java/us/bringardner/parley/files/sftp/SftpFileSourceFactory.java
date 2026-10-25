@@ -140,6 +140,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 * connection; see SftpChannelPool. Servers limit them: OpenSSH allows 10
 	 * per connection (MaxSessions). Not part of the session key: the first
 	 * factory to connect sets it for everyone sharing the connection.
+	 * At least 2 keeps a channel for calls (stat, list...) while streams are
+	 * open; with 1, a call waits until no stream is open.
 	 */
 	public static final String PROP_MAX_CHANNELS = "maxChannels";
 	public static final int DEFAULT_MAX_CHANNELS = 8;
@@ -449,7 +451,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 
 	/**
 	 * Most channels open at once on the shared connection (see
-	 * PROP_MAX_CHANNELS). Takes effect when a new connection is made.
+	 * PROP_MAX_CHANNELS). Takes effect when a new connection is made. With 1,
+	 * a call (stat, list...) waits until no stream is open.
 	 *
 	 * @throws IllegalArgumentException if less than 1
 	 */

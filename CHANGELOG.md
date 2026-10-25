@@ -10,6 +10,12 @@
   The `bjl.sftp.*` names are no longer read (`LEGACY_SYSTEM_PROPERTY` and
   `LEGACY_SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL` are gone); `bjl` still works as an implementation name.
 
+### Fixed
+
+- With `maxChannels` 1, the channel kept for calls can't exist: this is now documented (a call
+  waits until no stream is open), and the error says so instead of counting channels kept for
+  calls that aren't there.
+
 ## parley-files-sftp 1.1.0 (unreleased)
 
 Needs parley-files 1.1.0.

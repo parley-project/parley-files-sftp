@@ -33,6 +33,11 @@ import us.bringardner.parley.files.sftp.spi.SshConnection;
  * another meanwhile, so calls always finish, even while every thread holding
  * a stream is waiting on a call.
  * <p>
+ * That needs at least 2 channels. With maxChannels 1 a stream may hold the
+ * only channel, so a call made while a stream is open waits for it to be
+ * closed, and fails after waitMs; the thread holding the stream can't make a
+ * call at all until it closes it.
+ * <p>
  * At most MAX_IDLE channels are kept idle. A channel idle for longer than
  * MAX_IDLE_NANOS is closed the next time the pool is used. close() closes the
  * idle channels; the factory calls it when the last factory lets go of the
@@ -171,8 +176,10 @@ class SftpChannelPool {
 		if( left <= 0 ) {
 			String what = use == Use.STREAM
 					? "all "+streamLimit()+" SFTP channels for streams ("+maxChannels+" in all, "
-							+RESERVED_FOR_CALLS+" kept for other calls)"
-					: "all "+maxChannels+" SFTP channels";
+							+Math.min(RESERVED_FOR_CALLS, maxChannels-streamLimit())+" kept for other calls)"
+					: maxChannels == 1 && streams > 0
+							? "the only SFTP channel (maxChannels is 1; a stream is open)"
+							: "all "+maxChannels+" SFTP channels";
 			throw new IOException(what+" on this connection are in use; waited "+waitMs
 					+" ms (see the maxChannels and channelWaitTimeout properties)");
 		}
