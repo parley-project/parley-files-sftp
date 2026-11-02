@@ -72,9 +72,11 @@ public class SftpCanonicalPathTest {
 			links = false;   // e.g. Windows without the privilege
 		}
 
-		server = new SshServer(PORT);
-		// an in-memory host key: without one Maverick makes ssh_host_* files in the working directory
-		server.addHostKey(SshKeyPairGenerator.generateKeyPair(SshKeyPairGenerator.ED25519));
+		// the loopback address only, as TestServer does (no other interface, and no IPv6 needed)
+		server = new SshServer(java.net.InetAddress.getLoopbackAddress(), PORT);
+		// an in-memory host key: without one Maverick makes ssh_host_* files in the working directory;
+		// ECDSA, since Java 11 (the release Parley targets) has no Ed25519 KeyPairGenerator
+		server.addHostKey(SshKeyPairGenerator.generateKeyPair(SshKeyPairGenerator.ECDSA, 256));
 		server.addAuthenticator(new InMemoryPasswordAuthenticator().addUser(USER, PASSWORD.toCharArray()));
 		server.setFileFactory(new FileFactory() {
 			@Override

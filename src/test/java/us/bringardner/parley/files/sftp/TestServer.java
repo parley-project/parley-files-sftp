@@ -260,7 +260,7 @@ public final class TestServer {
 		}
 		try {
 			SshServer server = new SshServer(InetAddress.getLoopbackAddress(), embeddedPort);
-			server.addHostKey(SshKeyPairGenerator.generateKeyPair(SshKeyPairGenerator.ED25519));
+			server.addHostKey(SshKeyPairGenerator.generateKeyPair(SshKeyPairGenerator.ECDSA, 256));
 			server.addAuthenticator(new InMemoryPasswordAuthenticator().addUser(USER, PASSWORD.toCharArray()));
 			server.setFileFactory(con -> NioFileFactoryBuilder.create()
 					.withHome(home)
