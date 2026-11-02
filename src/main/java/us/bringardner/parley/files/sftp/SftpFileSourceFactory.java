@@ -124,9 +124,9 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	/** The SSH provider to use by name ("parley", "jsch", "mina", ...); empty: see SshProviders. */
 	public static final String PROP_IMPLEMENTATION = "implementation";
 	/**
-	 * Milliseconds a file's attributes (exists, size, times, type, owner) are
-	 * trusted before the server is asked again: 0 = always ask, negative =
-	 * until refresh(). Directory listings are never cached.
+	 * How long a file's attributes (exists, size, times, type, owner) are
+	 * trusted before the server is asked again, a duration (2s): 0 = always ask,
+	 * -1 = until refresh(). Directory listings are never cached.
 	 */
 	public static final String PROP_ATTRIBUTE_CACHE_TTL = "attributeCacheTtl";
 	/** System property with the JVM-wide default for PROP_ATTRIBUTE_CACHE_TTL. */
@@ -146,7 +146,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	public static final String PROP_MAX_CHANNELS = "maxChannels";
 	public static final int DEFAULT_MAX_CHANNELS = 8;
 	/**
-	 * Milliseconds to wait for a channel when all maxChannels are in use,
+	 * How long to wait for a channel when all maxChannels are in use, a duration,
 	 * before failing (0 = fail at once). Set like PROP_MAX_CHANNELS.
 	 */
 	public static final String PROP_CHANNEL_WAIT_TIMEOUT = "channelWaitTimeout";
@@ -513,18 +513,37 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 
 	/**
 	 * The JVM-wide default for the attribute cache time: the system property
-	 * parley.files.sftp.attributeCacheTtl if it's a number, otherwise 2000 ms.
+	 * parley.files.sftp.attributeCacheTtl if it's a duration (or -1), otherwise 2s.
 	 */
 	public static long defaultAttributeCacheTtl() {
 		String v = System.getProperty(SYSTEM_PROPERTY_ATTRIBUTE_CACHE_TTL);
 		if( v != null && !v.trim().isEmpty()) {
 			try {
-				return Long.parseLong(v.trim());
-			} catch (NumberFormatException e) {
+				return parseTtl(v);
+			} catch (IllegalArgumentException e) {
 				// ignore a bad value and use the default
 			}
 		}
 		return DEFAULT_ATTRIBUTE_CACHE_TTL;
+	}
+
+	/** An attribute cache time: a duration, or a negative number (-1) for until refresh() */
+	static long parseTtl(String v) {
+		String t = v.trim();
+		if( t.startsWith("-") ) {
+			return -1;
+		}
+		return us.bringardner.parley.core.util.Durations.parse(t);
+	}
+
+	static String formatTtl(long ttl) {
+		return ttl < 0 ? "-1" : us.bringardner.parley.core.util.Durations.format(ttl);
+	}
+
+	/** A duration connection setting in ms, or def when it isn't set */
+	private static long duration(Properties p, String key, long def) {
+		String v = p.getProperty(key);
+		return v == null || v.trim().isEmpty() ? def : us.bringardner.parley.core.util.Durations.parse(v);
 	}
 
 	/**
@@ -988,18 +1007,18 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 					.withDescription("An OpenSSH or PEM private key file").visibleWhen(PROP_AUTH, AUTH_KEY_FILE),
 				ConnectionSetting.multilineSecret(PROP_PRIVATE_KEY, "Private key").asRequired()
 					.withDescription("Paste a private key here, in PEM or OpenSSH format").visibleWhen(PROP_AUTH, AUTH_KEY),
-				ConnectionSetting.integer(PROP_ATTRIBUTE_CACHE_TTL, "Cache file details for (ms)", -1L, null)
-					.withDefault(""+defaultAttributeCacheTtl())
-					.withDescription("0 = always ask the server, -1 = until refresh"),
+				ConnectionSetting.durationOrMinusOne(PROP_ATTRIBUTE_CACHE_TTL, "Cache file details for")
+					.withDefault(formatTtl(defaultAttributeCacheTtl()))
+					.withDescription("A duration (2s); 0 = always ask the server, -1 = until refresh"),
 				ConnectionSetting.localFile(PROP_KNOWN_HOSTS, "Known hosts file").asAdvanced()
 					.withDescription("Server keys to trust; empty for ~/.ssh/known_hosts"),
 				ConnectionSetting.choice(PROP_STRICT_HOST_KEY_CHECKING, "Check the server's key", "yes", "no").asAdvanced()
 					.withDefault(DEFAULT_STRICT_HOST_KEY_CHECKING)
 					.withDescription("no accepts any server, which lets one be impersonated"),
-				ConnectionSetting.integer(PROP_CONNECT_TIMEOUT, "Connect timeout (ms)", 0L, null).asAdvanced()
-					.withDefault(""+DEFAULT_CONNECT_TIMEOUT),
-				ConnectionSetting.integer(PROP_SERVER_ALIVE_INTERVAL, "Keep-alive interval (ms)", 0L, null).asAdvanced()
-					.withDefault(""+DEFAULT_SERVER_ALIVE_INTERVAL),
+				ConnectionSetting.duration(PROP_CONNECT_TIMEOUT, "Connect timeout").asAdvanced()
+					.withDefault(us.bringardner.parley.core.util.Durations.format(DEFAULT_CONNECT_TIMEOUT)),
+				ConnectionSetting.duration(PROP_SERVER_ALIVE_INTERVAL, "Keep-alive interval").asAdvanced()
+					.withDefault(us.bringardner.parley.core.util.Durations.format(DEFAULT_SERVER_ALIVE_INTERVAL)),
 				ConnectionSetting.choice(PROP_IMPLEMENTATION, "SSH library", providerChoices())
 					.asAdvanced().withDefault("")
 					.withDescription("The SSH provider: one on the class path. Empty: the system property"
@@ -1007,8 +1026,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 				ConnectionSetting.integer(PROP_MAX_CHANNELS, "Most channels at once", 1L, null).asAdvanced()
 					.withDefault(""+DEFAULT_MAX_CHANNELS)
 					.withDescription("Servers limit these: OpenSSH allows 10 per connection"),
-				ConnectionSetting.integer(PROP_CHANNEL_WAIT_TIMEOUT, "Wait for a channel (ms)", 0L, null).asAdvanced()
-					.withDefault(""+DEFAULT_CHANNEL_WAIT_TIMEOUT),
+				ConnectionSetting.duration(PROP_CHANNEL_WAIT_TIMEOUT, "Wait for a channel").asAdvanced()
+					.withDefault(us.bringardner.parley.core.util.Durations.format(DEFAULT_CHANNEL_WAIT_TIMEOUT)),
 				ConnectionSetting.bool(PROP_SAFE_OVERWRITE, "Write through a temporary file").asAdvanced()
 					.withDescription("A failed write then leaves the old file as it was"),
 				ConnectionSetting.hidden(PROP_SESSION_KEY));
@@ -1090,12 +1109,12 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.setProperty(PROP_SESSION_KEY, sessionKey == null ? "":sessionKey);
 		ret.setProperty(PROP_KNOWN_HOSTS, knownHosts == null ? "":knownHosts);
 		ret.setProperty(PROP_STRICT_HOST_KEY_CHECKING, strictHostKeyChecking);
-		ret.setProperty(PROP_CONNECT_TIMEOUT, ""+connectTimeout);
-		ret.setProperty(PROP_SERVER_ALIVE_INTERVAL, ""+serverAliveInterval);
+		ret.setProperty(PROP_CONNECT_TIMEOUT, us.bringardner.parley.core.util.Durations.format(Math.max(0, connectTimeout)));
+		ret.setProperty(PROP_SERVER_ALIVE_INTERVAL, us.bringardner.parley.core.util.Durations.format(Math.max(0, serverAliveInterval)));
 		ret.setProperty(PROP_IMPLEMENTATION, implementation == null ? "":implementation);
-		ret.setProperty(PROP_ATTRIBUTE_CACHE_TTL, ""+attributeCacheTtl);
+		ret.setProperty(PROP_ATTRIBUTE_CACHE_TTL, formatTtl(attributeCacheTtl));
 		ret.setProperty(PROP_MAX_CHANNELS, ""+maxChannels);
-		ret.setProperty(PROP_CHANNEL_WAIT_TIMEOUT, ""+channelWaitTimeout);
+		ret.setProperty(PROP_CHANNEL_WAIT_TIMEOUT, us.bringardner.parley.core.util.Durations.format(Math.max(0, channelWaitTimeout)));
 		ret.setProperty(PROP_SAFE_OVERWRITE, ""+safeOverwrite);
 		if( chunkSizeExplicit ) {
 			ret.setProperty(PROP_BUFFER_SIZE, ""+chunkSize);
@@ -1193,12 +1212,12 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		String kh = p.getProperty(PROP_KNOWN_HOSTS, knownHosts);
 		knownHosts = kh == null || kh.isEmpty() ? null : kh;
 		setStrictHostKeyChecking(p.getProperty(PROP_STRICT_HOST_KEY_CHECKING, strictHostKeyChecking));
-		connectTimeout = Integer.parseInt(p.getProperty(PROP_CONNECT_TIMEOUT, ""+connectTimeout).trim());
-		serverAliveInterval = Integer.parseInt(p.getProperty(PROP_SERVER_ALIVE_INTERVAL, ""+serverAliveInterval).trim());
+		connectTimeout = us.bringardner.parley.core.util.Durations.toIntMillis(duration(p, PROP_CONNECT_TIMEOUT, connectTimeout));
+		serverAliveInterval = us.bringardner.parley.core.util.Durations.toIntMillis(duration(p, PROP_SERVER_ALIVE_INTERVAL, serverAliveInterval));
 		setImplementation(p.getProperty(PROP_IMPLEMENTATION, implementation));
 		String ttl = p.getProperty(PROP_ATTRIBUTE_CACHE_TTL);
 		if( ttl != null && !ttl.trim().isEmpty()) {
-			setAttributeCacheTtl(Long.parseLong(ttl.trim()));
+			setAttributeCacheTtl(parseTtl(ttl));
 		}
 		String max = p.getProperty(PROP_MAX_CHANNELS);
 		if( max != null && !max.trim().isEmpty()) {
@@ -1206,7 +1225,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		}
 		String wait = p.getProperty(PROP_CHANNEL_WAIT_TIMEOUT);
 		if( wait != null && !wait.trim().isEmpty()) {
-			setChannelWaitTimeout(Long.parseLong(wait.trim()));
+			setChannelWaitTimeout(us.bringardner.parley.core.util.Durations.parse(wait));
 		}
 		String safe = p.getProperty(PROP_SAFE_OVERWRITE);
 		if( safe != null && !safe.trim().isEmpty()) {

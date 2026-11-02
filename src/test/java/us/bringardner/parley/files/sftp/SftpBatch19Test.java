@@ -360,7 +360,7 @@ public class SftpBatch19Test {
 		assertEquals(30_000, f.getChannelWaitTimeout());
 		Properties p = f.getConnectProperties();
 		assertEquals("8", p.getProperty(SftpFileSourceFactory.PROP_MAX_CHANNELS));
-		assertEquals("30000", p.getProperty(SftpFileSourceFactory.PROP_CHANNEL_WAIT_TIMEOUT));
+		assertEquals("30s", p.getProperty(SftpFileSourceFactory.PROP_CHANNEL_WAIT_TIMEOUT));
 
 		p.setProperty(SftpFileSourceFactory.PROP_MAX_CHANNELS, "5");
 		p.setProperty(SftpFileSourceFactory.PROP_CHANNEL_WAIT_TIMEOUT, "1234");

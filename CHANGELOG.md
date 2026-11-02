@@ -10,6 +10,10 @@
 
 ### Changed (needs a configuration change)
 
+- **Times are durations** (To-Do 2.19): the connection settings `connectTimeout`, `serverAliveInterval`,
+  `channelWaitTimeout` and `attributeCacheTtl` (`-1` still means until refresh), and the JVM-wide
+  `parley.files.sftp.attributeCacheTtl`, take `30s`, `500ms` (a bare number is ms), are saved as durations, and are
+  checked as durations in the connection forms.
 - **Property names** (Parley 2.0.0): `parley.sftp.implementation`, `parley.sftp.attributeCacheTtl` and
   `parley.sftp.bufferSize` are `parley.files.sftp.implementation`, `.attributeCacheTtl` and `.bufferSize`, and the
   test suite's `parley.sftp.test.server` / `.unsupported` are `parley.files.sftp.test.server` / `.unsupported`.

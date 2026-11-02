@@ -230,7 +230,7 @@ public class SftpCacheTest {
 
 		f.setAttributeCacheTtl(1234);
 		assertEquals(1234, f.getAttributeCacheTtl(), "setter");
-		assertEquals("1234", f.getConnectProperties().getProperty(SftpFileSourceFactory.PROP_ATTRIBUTE_CACHE_TTL),
+		assertEquals("1234ms", f.getConnectProperties().getProperty(SftpFileSourceFactory.PROP_ATTRIBUTE_CACHE_TTL),
 				"reported in the connection properties");
 
 		Properties p = f.getConnectProperties();

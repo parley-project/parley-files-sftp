@@ -147,9 +147,9 @@ those tests, and the provider's own tests should check that it refuses them with
 | `identityFile` / `privateKey` | | Private key file path, or the key itself |
 | `strictHostKeyChecking` | `yes` | Connect only to servers whose host key is in `knownHosts`; the error says how to add one (`ssh-keyscan`). `no` accepts any server, which lets one be impersonated |
 | `knownHosts` | `~/.ssh/known_hosts` | known_hosts file used when checking is on |
-| `connectTimeout` | 30000 | Milliseconds for connect, handshake and login |
-| `serverAliveInterval` | 30000 | Milliseconds between keepalives; 0 turns them off |
-| `attributeCacheTtl` | 2000 | Milliseconds a file's details are cached; see below |
+| `connectTimeout` | `30s` | How long connect, handshake and login may take, a duration |
+| `serverAliveInterval` | `30s` | The time between keepalives, a duration; 0 turns them off |
+| `attributeCacheTtl` | `2s` | How long a file's details are cached, a duration (-1: until refreshed); see below |
 
 ## Links
 
@@ -190,7 +190,7 @@ not other clients of the server. Applications that need more build it on top (pa
 
 Directory listings are never cached: every `listFiles()` asks the server, like `java.io.File`, so a listing always shows changes made through other objects or by other programs. The listing carries each child's details, so calling `isDirectory()` or `length()` on its results costs nothing more.
 
-A file's own details (whether it exists, its size, times, type and owner) are cached for `attributeCacheTtl` milliseconds, then fetched again:
+A file's own details (whether it exists, its size, times, type and owner) are cached for `attributeCacheTtl` (a duration such as `2s`), then fetched again:
 
 | Value | Behaviour |
 |---|---|
