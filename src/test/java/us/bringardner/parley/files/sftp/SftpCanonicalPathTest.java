@@ -52,6 +52,7 @@ public class SftpCanonicalPathTest {
 
 	@BeforeAll
 	public static void setUp() throws Exception {
+		TestServer.provider();   // skips the class if no SSH provider is on the class path
 		base = Paths.get(FileSourceTestSupport.scratchDir("SftpCanonicalPathTest"));
 		deleteAll(base);
 		Files.createDirectories(base.resolve("root/sub"));
@@ -113,7 +114,9 @@ public class SftpCanonicalPathTest {
 		if( server != null ) {
 			server.stop();
 		}
-		deleteAll(base);
+		if( base != null ) {   // null if setUp skipped the class
+			deleteAll(base);
+		}
 	}
 
 	private static FileSource remote(String relative) throws IOException {

@@ -206,6 +206,9 @@ public final class TestServer {
 	}
 
 	static SftpFileSourceFactory connect(String implementation, int port) throws IOException {
+		if( implementation == null ) {
+			provider();   // the default: skips if there is none
+		}
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
 		f.setConnectionProperties(properties(implementation, port));
 		assertTrue(f.connect(), "Factory did not connect to "+HOST+":"+port);

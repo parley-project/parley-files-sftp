@@ -55,13 +55,14 @@ public class SftpCredentialReferenceTest {
 
 	@Test
 	public void aWrongPromptedPasswordIsAskedForAgain() throws IOException {
+		String provider = TestServer.provider();   // skips, rather than counting as the expected IOException
 		List<String> answers = new ArrayList<>(List.of("wrong", TestServer.PASSWORD));
 		List<String> labels = new ArrayList<>();
 		Credentials.setPrompter((label, req) -> { labels.add(label); return answers.remove(0).toCharArray(); });
 		SftpFileSourceFactory f = new SftpFileSourceFactory();
 		try {
-			assertThrows(IOException.class, () -> f.connect(props(TestServer.provider(), "@prompt:")), "the first answer is wrong");
-			assertTrue(f.connect(props(TestServer.provider(), "@prompt:")));
+			assertThrows(IOException.class, () -> f.connect(props(provider, "@prompt:")), "the first answer is wrong");
+			assertTrue(f.connect(props(provider, "@prompt:")));
 			assertTrue(answers.isEmpty());
 			assertEquals("password for "+TestServer.USER+"@"+TestServer.HOST+" (sftp)", labels.get(0));
 		} finally {
