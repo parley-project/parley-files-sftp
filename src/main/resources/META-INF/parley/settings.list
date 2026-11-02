@@ -1,0 +1,6 @@
+# The settings parley-files-sftp reads, for the start-up check of parley-net's servers
+# (format: parley-net's KnownSettings). Add a name here when code here starts reading it.
+
+parley.files.sftp.implementation
+parley.files.sftp.attributeCacheTtl
+parley.files.sftp.bufferSize

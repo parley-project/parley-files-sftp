@@ -2,6 +2,12 @@
 
 ## parley-files-sftp 2.0.0 (unreleased)
 
+### Added
+
+- **The settings this module reads are listed** in `META-INF/parley/settings.list`, so a Parley server's
+  start-up check (parley-net's `KnownSettings`, To-Do 2.16) knows them and warns only about a setting
+  nothing reads. A test checks the list has every name the code here reads.
+
 ### Changed (needs a configuration change)
 
 - **Property names** (Parley 2.0.0): `parley.sftp.implementation`, `parley.sftp.attributeCacheTtl` and
