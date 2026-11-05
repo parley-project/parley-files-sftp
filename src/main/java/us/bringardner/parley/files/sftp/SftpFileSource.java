@@ -924,6 +924,11 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		return name;
 	}
 
+	/**
+	 * The parent's path, as java.io.File.getParent(): "/" for a file at the
+	 * top ("/a"), null for "/" itself. (It used to be null for "/a" too, so
+	 * walking up from a path stopped short of the root.)
+	 */
 	@Override
 	public String getParent() {
 		String ret = null;
@@ -931,6 +936,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			int idx = path.lastIndexOf("/");
 			if( idx > 0 ) {
 				ret = path.substring(0,idx);
+			} else if( idx == 0 ) {
+				ret = "/";
 			}
 		}
 		return ret;
