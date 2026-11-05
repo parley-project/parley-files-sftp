@@ -1110,13 +1110,20 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		return ret;
 	}
 
+	/**
+	 * Not synchronized: a listing can take a while (a round trip or more,
+	 * and the links' targets), and holding this file's lock for it held up
+	 * every other call on the file meanwhile (getParentFile(), say), on
+	 * whatever thread made them: the viewer's event thread. getKids()
+	 * changes this file's fields only under its lock.
+	 */
 	@Override
-	public  synchronized FileSource[] listFiles() throws IOException {
+	public FileSource[] listFiles() throws IOException {
 		return getKids(null);
 	}
 
 	@Override
-	public synchronized  FileSource[] listFiles(FileSourceFilter filter) throws IOException {
+	public FileSource[] listFiles(FileSourceFilter filter) throws IOException {
 		List<FileSource> ret = new ArrayList<FileSource>();
 		FileSource[] list = listFiles();
 		if( list == null ) {
