@@ -406,13 +406,19 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	private SftpFileSource[] getKids(FileSourceProgress monitor) throws IOException {
 		if( monitor != null) monitor.setProgress(0);
 		SftpFileSource[] ret = null;
-		if( !isFile() ) {
-			// if it's not a file it may be a directory or a new / non existing entry
-			List<FileSource> list = new ArrayList<FileSource>();
+		if( !knownToBeAFile() ) {
+			// List first: a stat before every listing cost a round trip each time.
+			// Only a listing that fails asks what's there (below).
+			List<SftpFileSource> list = new ArrayList<SftpFileSource>();
 			try {
 				List<SftpEntry> ls = factory.ls(path);
+				if( listsItself(ls) && isFile() ) {
+					// some libraries (JSch) list a file as itself: a file has no list, as java.io.File
+					ls = null;
+					list = null;
+				}
 				int cnt = 0;
-				for (SftpEntry e : ls) {
+				for (SftpEntry e : ls == null ? List.<SftpEntry>of() : ls) {
 					cnt++;
 					if( ! (e.getFilename().equals(".") || e.getFilename().equals(".."))) {
 						list.add(new SftpFileSource(factory, this,e));
@@ -436,15 +442,104 @@ public class SftpFileSource extends BaseObject implements FileSource {
 					}
 					// as java.io.File: a path that isn't there has no list (it was an empty one)
 					list = null;
+				} else if( isFile() ) {
+					// as java.io.File: a file has no list (servers fail listing one in different ways)
+					list = null;
 				} else {
 					throw e;
 				}
+			}
+			if( list != null ) {
+				lookUpLinks(list);
 			}
 			ret = list == null ? null : list.toArray(new SftpFileSource[list.size()]);
 		}
 
 		if( monitor != null) monitor.setProgress(monitor.getMaximum());
 		return ret;
+	}
+
+	/**
+	 * Whether a listing of this path could be the file itself, not a folder's
+	 * entries: one entry, not a folder, with this file's own name. (A folder
+	 * that holds only a file of its own name looks the same; isFile() tells.)
+	 */
+	private boolean listsItself(List<SftpEntry> ls) {
+		if( ls.size() != 1 ) {
+			return false;
+		}
+		SftpEntry e = ls.get(0);
+		return e.getFilename().equals(name) && (e.getAttrs() == null || !e.getAttrs().isDir());
+	}
+
+		/** True if the cached attributes, while fresh, say this is a file; never asks the server. */
+	private synchronized boolean knownToBeAFile() {
+		expireIfStale();
+		return attr != null && !attr.isDir();
+	}
+
+	/** How many links' targets are looked up at once; see lookUpLinks. Within the pool's idle channels. */
+	static final int LINK_LOOKUPS_AT_ONCE = 4;
+
+	/** Daemon threads for lookUpLinks; idle ones end after a minute. */
+	private static final java.util.concurrent.ExecutorService LINK_LOOKUPS =
+			new java.util.concurrent.ThreadPoolExecutor(0, Integer.MAX_VALUE, 60, java.util.concurrent.TimeUnit.SECONDS,
+					new java.util.concurrent.SynchronousQueue<>(), r -> {
+						Thread t = new Thread(r, "SFTP link lookup");
+						t.setDaemon(true);
+						return t;
+					});
+
+	/**
+	 * A listing describes a link itself, not what it points to, so each link
+	 * in a listing costs a stat (is it a directory? how big?) and a readlink
+	 * when it's asked about. Asked one at a time, a folder with many links
+	 * (/usr/lib, say) waited for each in turn; this asks for several at once,
+	 * each on its own channel, and keeps the answers in the children.
+	 * Failures are left for the child to report when it's asked.
+	 */
+	private void lookUpLinks(List<SftpFileSource> kids) {
+		List<SftpFileSource> links = new ArrayList<>();
+		for (SftpFileSource k : kids) {
+			if( Boolean.TRUE.equals(k.isLink) ) {
+				links.add(k);
+			}
+		}
+		if( links.size() < 2 ) {
+			return;   // one is asked about as quickly when it's used
+		}
+		java.util.concurrent.atomic.AtomicInteger next = new java.util.concurrent.atomic.AtomicInteger();
+		Runnable worker = () -> {
+			for (int i; (i = next.getAndIncrement()) < links.size(); ) {
+				SftpFileSource k = links.get(i);
+				try {
+					k.getAttr();
+					k.getLinkedTo();
+				} catch (IOException | RuntimeException e) {
+					// asked again, and reported, when the file is used
+				}
+			}
+		};
+		int threads = Math.min(LINK_LOOKUPS_AT_ONCE, links.size());
+		List<java.util.concurrent.Future<?>> running = new ArrayList<>();
+		try {
+			for (int t = 1; t < threads; t++) {
+				running.add(LINK_LOOKUPS.submit(worker));
+			}
+		} catch (java.util.concurrent.RejectedExecutionException e) {
+			// fewer at once
+		}
+		worker.run();   // this thread does its share
+		for (java.util.concurrent.Future<?> f : running) {
+			try {
+				f.get();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			} catch (java.util.concurrent.ExecutionException e) {
+				// the worker catches its own failures
+			}
+		}
 	}
 
 	private synchronized void clearOwner() {
@@ -853,7 +948,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			return true;
 		}
 		try {
-			return factory.lstat(path) != null;
+			return factory.pathLstat(path) != null;
 		} catch (IOException e) {
 			if( isNoSuchFile(e) ) {
 				return false;
@@ -890,7 +985,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			String current = "/"+String.join("/", done);
 			SftpAttributes a;
 			try {
-				a = factory.lstat(current);
+				a = factory.pathLstat(current);
 			} catch (IOException e) {
 				if( isNoSuchFile(e)) {
 					missingAt = done.size()-1;
@@ -902,7 +997,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 				if( ++links > MAX_LINKS ) {
 					throw new IOException("Too many levels of symbolic links: "+absolutePath);
 				}
-				String target = factory.readlink(current);
+				String target = factory.pathReadlink(current);
 				// a relative target is relative to the link's directory
 				done.remove(done.size()-1);
 				if( target.startsWith("/")) {
@@ -1384,6 +1479,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 	@Override
 	public  synchronized void refresh() throws IOException {
+		factory.forgetPaths();
 		attr = null;
 		exists = null;
 		isLink = null;
@@ -1408,15 +1504,19 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	public synchronized FileSource getLinkedTo() throws IOException {
 		expireIfStale();
 		if( isLink == null || (isLink && linkedTo == null)) {
-			SftpAttributes self = getLinkAttr();
-			startClockIfEmpty();
-			isLink = self != null && self.isLink();
+			if( isLink == null ) {
+				// not known from a listing (or no longer fresh): ask
+				SftpAttributes self = getLinkAttr();
+				startClockIfEmpty();
+				isLink = self != null && self.isLink();
+			}
 			if( isLink ) {
 				String target = factory.readlink(path);
 				if( !target.startsWith("/")) {
 					// a relative target is relative to the link's own directory
 					String dir = getParent();
-					target = (dir == null ? "" : dir) + "/" + target;
+					// "/" for a link at the top: not "//target"
+					target = (dir == null || dir.equals("/") ? "" : dir) + "/" + target;
 				}
 				linkedTo = factory.createFileSource(target);
 			}

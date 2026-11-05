@@ -1254,11 +1254,19 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		return FACTORY_ID+"://"+getUser()+"@"+getHost()+":"+getPort();
 	}
 
-	/** Lists a directory, remembering the owner and group names it shows. */
+	/**
+	 * Lists a directory, remembering the owner and group names it shows, and
+	 * each entry's attributes for canonical paths (see pathLstat).
+	 */
 	public List<SftpEntry> ls(String path) throws IOException {
 		List<SftpEntry> ret = sftpReadOnly(c -> c.list(path));
+		String dir = path.endsWith("/") ? path : path+"/";
 		for (SftpEntry e : ret) {
 			rememberNames(e);
+			String name = e.getFilename();
+			if( dir.startsWith("/") && e.getAttrs() != null && !name.equals(".") && !name.equals("..") ) {
+				rememberPath(dir+name, e.getAttrs(), null);
+			}
 		}
 		return ret;
 	}
@@ -1325,6 +1333,105 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 
 	public String readlink(String path) throws IOException {
 		return sftpReadOnly(c -> c.readLink(path));
+	}
+
+	/*
+	 * Answers kept for working out canonical paths. getCanonicalPath() checks
+	 * every element of a path on the server (lstat, and readlink for a link),
+	 * so canonical paths of the files in one folder asked the same questions
+	 * about the same parent folders again and again: a request per element of
+	 * the path, per file. The answers are kept for the attribute cache time
+	 * (getAttributeCacheTtl) and dropped, like the files' own cached
+	 * attributes, by any change made through this factory (getChangeCount).
+	 * A listing fills them in for every entry it lists.
+	 */
+
+	/** An lstat answer (null attrs: not there), and the link's target once read. */
+	private static final class PathInfo {
+		final SftpAttributes attrs;
+		final String linkTarget;
+		final long at;
+		final long change;
+
+		PathInfo(SftpAttributes attrs, String linkTarget, long change) {
+			this.attrs = attrs;
+			this.linkTarget = linkTarget;
+			this.at = System.nanoTime();
+			this.change = change;
+		}
+	}
+
+	/** Most paths kept; past this the whole cache is dropped (it fills again as it's used). */
+	static final int MAX_PATHS = 10_000;
+	private final Map<String,PathInfo> paths = new ConcurrentHashMap<>();
+
+	private PathInfo freshPath(String path) {
+		long ttl = attributeCacheTtl;
+		if( ttl == 0 ) {
+			return null;
+		}
+		PathInfo i = paths.get(path);
+		if( i == null ) {
+			return null;
+		}
+		if( i.change != getChangeCount() || (ttl > 0 && System.nanoTime() - i.at > ttl * 1_000_000L) ) {
+			paths.remove(path, i);
+			return null;
+		}
+		return i;
+	}
+
+	private void rememberPath(String path, SftpAttributes attrs, String linkTarget) {
+		if( attributeCacheTtl == 0 ) {
+			return;
+		}
+		if( paths.size() >= MAX_PATHS ) {
+			paths.clear();
+		}
+		paths.put(path, new PathInfo(attrs, linkTarget, getChangeCount()));
+	}
+
+	/** Forgets the answers kept for canonical paths (refresh()). */
+	void forgetPaths() {
+		paths.clear();
+	}
+
+	/**
+	 * lstat for working out a canonical path: a kept answer if there is a
+	 * fresh one. Throws NoSuchFileException if the path isn't there.
+	 */
+	SftpAttributes pathLstat(String path) throws IOException {
+		PathInfo i = freshPath(path);
+		if( i == null ) {
+			SftpAttributes a;
+			try {
+				a = lstat(path);
+			} catch (IOException e) {
+				if( SftpFileSource.isNoSuchFile(e) ) {
+					rememberPath(path, null, null);
+				}
+				throw e;
+			}
+			rememberPath(path, a, null);
+			return a;
+		}
+		if( i.attrs == null ) {
+			throw new NoSuchFileException(path);
+		}
+		return i.attrs;
+	}
+
+	/** readlink for working out a canonical path: a kept answer if there is a fresh one. */
+	String pathReadlink(String path) throws IOException {
+		PathInfo i = freshPath(path);
+		if( i != null && i.linkTarget != null ) {
+			return i.linkTarget;
+		}
+		String target = readlink(path);
+		if( i != null && i.attrs != null ) {
+			rememberPath(path, i.attrs, target);
+		}
+		return target;
 	}
 
 	@Override
