@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
+import us.bringardner.parley.ssh.SshFiles;
 import us.bringardner.parley.ssh.client.SshAgent;
 import us.bringardner.parley.ssh.server.AuthorizedKeysAuthenticator;
 import us.bringardner.parley.ssh.server.HostKeyProviders;
@@ -59,7 +60,7 @@ public class SftpAgentLoginTest {
 
 		server = new SshServer(0);
 		server.setHostKeyProvider(HostKeyProviders.ephemeral());
-		server.setPublicKeyAuthenticator(AuthorizedKeysAuthenticator.forFile(authorized));
+		server.setPublicKeyAuthenticator(AuthorizedKeysAuthenticator.forFile(SshFiles.local(authorized.getPath())));
 		server.addSubsystem(SftpSubsystemFactory.forRoot(FileSourceFactory.getDefaultFactory().createFileSource(root.getCanonicalPath())));
 		server.startAndWait(5000);
 	}
