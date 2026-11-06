@@ -2,6 +2,12 @@
 
 ## parley-files-sftp 2.0.0 (unreleased)
 
+### Changed (2026-11-06: parley-ssh's server logs in users of a parley-iam registry)
+
+- **The ssh-agent test (`SftpAgentLoginTest`) gives its parley-ssh server a user registry** (parley-net's
+  `FileUserRegistry`, with the test's user and the `sftp` permission): parley-ssh 2.0.0 logs in by key only users
+  its registry knows. Tests only; nothing in this module's code changed.
+
 ### Added
 
 - **The settings this module reads are listed** in `META-INF/parley/settings.list`, so a Parley server's

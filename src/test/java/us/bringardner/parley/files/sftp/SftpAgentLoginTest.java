@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.files.FileSource;
 import us.bringardner.parley.files.FileSourceFactory;
+import us.bringardner.parley.net.server.FileUserRegistry;
 import us.bringardner.parley.ssh.SshFiles;
 import us.bringardner.parley.ssh.client.SshAgent;
 import us.bringardner.parley.ssh.server.AuthorizedKeysAuthenticator;
@@ -58,7 +59,15 @@ public class SftpAgentLoginTest {
 		File root = new File(dir, "root");
 		assertTrue(root.mkdirs());
 
+		// the user: parley-ssh 2.0.0 logs in only users its parley-iam registry knows (the key
+		// decides who logs in; the password is never used), with the sftp permission
+		File users = new File(dir, "users");
+		Files.write(users.toPath(), ("agent-test, "+java.util.UUID.randomUUID()+", sftp\n").getBytes(StandardCharsets.UTF_8));
+		FileUserRegistry registry = new FileUserRegistry();
+		registry.initialize(users);
+
 		server = new SshServer(0);
+		server.setUserRegistry(registry);
 		server.setHostKeyProvider(HostKeyProviders.ephemeral());
 		server.setPublicKeyAuthenticator(AuthorizedKeysAuthenticator.forFile(SshFiles.local(authorized.getPath())));
 		server.addSubsystem(SftpSubsystemFactory.forRoot(FileSourceFactory.getDefaultFactory().createFileSource(root.getCanonicalPath())));
