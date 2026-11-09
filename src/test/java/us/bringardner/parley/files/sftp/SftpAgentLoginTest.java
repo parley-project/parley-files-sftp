@@ -64,7 +64,7 @@ public class SftpAgentLoginTest {
 		File users = new File(dir, "users");
 		Files.write(users.toPath(), ("agent-test, "+java.util.UUID.randomUUID()+", sftp\n").getBytes(StandardCharsets.UTF_8));
 		FileUserRegistry registry = new FileUserRegistry();
-		registry.initialize(users);
+		registry.initialize(FileSource.of(users));
 
 		server = new SshServer(0);
 		server.setUserRegistry(registry);
