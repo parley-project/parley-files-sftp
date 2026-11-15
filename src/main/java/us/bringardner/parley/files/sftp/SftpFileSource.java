@@ -815,8 +815,33 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	}
 
 
+	/**
+	 * Deletes the file, the link (not its target) or the empty directory at this path, as
+	 * java.io.File.delete does: false when there is nothing there, or the directory isn't empty.
+	 * <p>
+	 * When it is known what is at the path (from the listing this came from, or an earlier call),
+	 * it is deleted at once: one round trip. That is tried even when what was known is no longer
+	 * fresh (any change made through the factory makes every answer stale, so deleting a folder's
+	 * files one after another would otherwise ask the server about each first): the delete itself
+	 * checks it, failing if the path is no longer what was known (or is gone), and then the server is
+	 * asked what is there and it is deleted as before.
+	 */
 	@Override
 	public synchronized boolean delete() throws IOException {
+		Boolean knownDir = knownIsDirectory();
+		if( knownDir != null ) {
+			try {
+				if( knownDir ) {
+					factory.sftp(c -> { c.rmdir(path); return null; });
+				} else {
+					factory.sftp(c -> { c.remove(path); return null; });
+				}
+				clearAttr();
+				return true;
+			} catch (IOException e) {
+				// not what it was known to be any more, gone, not empty or not allowed: ask, below
+			}
+		}
 		boolean ret = false;
 		SftpAttributes self = getLinkAttr();   // the path itself, so a link is removed, not its target
 		if( self == null ) {
@@ -839,6 +864,20 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		clearAttr();
 		ret = true;
 		return ret;
+	}
+
+	/**
+	 * Whether the path itself is a directory, as last known, however long ago (never asks the
+	 * server): false for a link (a link is removed, not its target), null when not known.
+	 */
+	private Boolean knownIsDirectory() {
+		if( Boolean.TRUE.equals(isLink) ) {
+			return false;
+		}
+		if( Boolean.FALSE.equals(isLink) && attr != null ) {
+			return attr.isDir();
+		}
+		return null;
 	}
 
 	/** Whether this directory has anything in it (one listing). */
@@ -1784,6 +1823,6 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	@Override
 	public us.bringardner.parley.files.FileSourceCapabilities getCapabilities() {
 		return us.bringardner.parley.files.FileSourceCapabilities.defaults(getLockScope()).withOrderedOperations(true)
-				.withAtomicCreateNewFile(factory.createNewIsAtomic());
+				.withAtomicCreateNewFile(factory.createNewIsAtomic()).withRunsCommands(factory.isRunCommands());
 	}
 }
