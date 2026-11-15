@@ -2,6 +2,15 @@
 
 ## parley-files-sftp 2.0.0 (unreleased)
 
+### Added (2026-11-15: running programs on the server)
+
+- **`processBuilder(command)`** starts programs on the server over an SSH exec channel, when the new
+  connection setting **`runCommands`** is `true` (default `false`: it returns null). See the README's
+  *Running programs*. `getCapabilities().runsCommands()` follows the setting.
+- **`SshConnection.start(command)`** (SPI): a command that runs while its streams are read, as a
+  `java.lang.Process`. The default throws `UnsupportedOperationException`; Parley's three providers
+  implement it. **`SshExitStatus`** turns a status or signal into a local program's status.
+
 ### Changed (2026-11-06: parley-ssh's server logs in users of a parley-iam registry)
 
 - **The ssh-agent test (`SftpAgentLoginTest`) gives its parley-ssh server a user registry** (parley-net's

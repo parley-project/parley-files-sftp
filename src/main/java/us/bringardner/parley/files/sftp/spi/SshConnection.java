@@ -24,6 +24,24 @@ public interface SshConnection extends Closeable {
 	 */
 	ExecResult exec(String command, long timeoutMs) throws IOException;
 
+	/**
+	 * Starts a command on the server (needs shell access) and returns it while it runs, as a
+	 * local program would be: write its input to {@link Process#getOutputStream()} (closing it
+	 * ends the input), read {@link Process#getInputStream()} and {@link Process#getErrorStream()},
+	 * and {@link Process#waitFor()} its status ({@link SshExitStatus}). {@link Process#destroy()}
+	 * closes its channel. The default throws UnsupportedOperationException: a library that can
+	 * only run a command to the end ({@link #exec(String, long)}).
+	 *
+	 * @param command the command line the user's shell on the server runs
+	 * @return the running command
+	 * @throws IOException if it can't be started (the server may refuse commands, as an account
+	 *         limited to SFTP is)
+	 * @since 2.0.0
+	 */
+	default Process start(String command) throws IOException {
+		throw new UnsupportedOperationException("This SSH library can't stream a command");
+	}
+
 	/** Disconnects. Channels opened on it stop working. */
 	@Override
 	void close();

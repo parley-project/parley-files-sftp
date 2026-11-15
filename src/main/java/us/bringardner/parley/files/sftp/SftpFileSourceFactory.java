@@ -159,6 +159,15 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 * setSafeOverwrite for what changes.
 	 */
 	public static final String PROP_SAFE_OVERWRITE = "safeOverwrite";
+	/**
+	 * "true": {@link #processBuilder(List)} starts programs on the server (see
+	 * SftpProcessBuilder), which needs an account with shell access, not one limited to SFTP.
+	 * Default "false": it returns null, so files can be read and written but no program runs.
+	 * Running programs is a much bigger permission than reaching files, so it is off unless a
+	 * connection turns it on.
+	 * @since 2.0.0
+	 */
+	public static final String PROP_RUN_COMMANDS = "runCommands";
 
 	/**
 	 * This code was taken from sun.nio.fs.UnixFileModeAttribute
@@ -248,6 +257,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	private int maxChannels = DEFAULT_MAX_CHANNELS;
 	private long channelWaitTimeout = DEFAULT_CHANNEL_WAIT_TIMEOUT;
 	private volatile boolean safeOverwrite;
+	/** See PROP_RUN_COMMANDS. */
+	private volatile boolean runCommands;
 
 	/**
 	 * Holds the shared connection a factory has a reference to, apart from
@@ -500,6 +511,59 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 	 */
 	public void setSafeOverwrite(boolean safeOverwrite) {
 		this.safeOverwrite = safeOverwrite;
+	}
+
+	/** @return whether programs can be started on the server (see PROP_RUN_COMMANDS) @since 2.0.0 */
+	public boolean isRunCommands() {
+		return runCommands;
+	}
+
+	/** @param runCommands whether programs can be started on the server (see PROP_RUN_COMMANDS) @since 2.0.0 */
+	public void setRunCommands(boolean runCommands) {
+		this.runCommands = runCommands;
+	}
+
+	/**
+	 * Starts programs on the server when the connection allows it (PROP_RUN_COMMANDS), else null.
+	 * See SftpProcessBuilder for how the command runs there.
+	 */
+	@Override
+	public us.bringardner.parley.files.FileSourceProcessBuilder processBuilder(List<String> command) {
+		return runCommands ? new SftpProcessBuilder(this, command) : null;
+	}
+
+	/**
+	 * Starts commandLine on the server for SftpProcessBuilder. The command holds one of the
+	 * connection's channel slots (PROP_MAX_CHANNELS) until it ends.
+	 */
+	Process startCommand(String commandLine) throws IOException {
+		SharedSession s = session();
+		Runnable slot = s.pool.reserveSlot();
+		Process p;
+		try {
+			p = s.connection.start(commandLine);
+		} catch (UnsupportedOperationException e) {
+			slot.run();
+			throw new IOException("The SSH library in use can't run programs: "+e.getMessage(), e);
+		} catch (IOException | RuntimeException e) {
+			slot.run();
+			throw new IOException("Can't run a program on "+host+" as "+user
+					+" (the account may be limited to SFTP): "+e.getMessage(), e);
+		}
+		Thread release = new Thread(() -> {
+			while( true ) {
+				try {
+					p.waitFor();
+					break;
+				} catch (InterruptedException e) {
+					// keep the slot until the command has ended
+				}
+			}
+			slot.run();
+		}, "SFTP command slot");
+		release.setDaemon(true);
+		release.start();
+		return p;
 	}
 
 	public int getServerAliveInterval() {
@@ -1030,6 +1094,8 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 					.withDefault(us.bringardner.parley.core.util.Durations.format(DEFAULT_CHANNEL_WAIT_TIMEOUT)),
 				ConnectionSetting.bool(PROP_SAFE_OVERWRITE, "Write through a temporary file").asAdvanced()
 					.withDescription("A failed write then leaves the old file as it was"),
+				ConnectionSetting.bool(PROP_RUN_COMMANDS, "Allow running programs").asAdvanced()
+					.withDescription("Programs can then be started on the server; needs shell access, not SFTP only"),
 				ConnectionSetting.hidden(PROP_SESSION_KEY));
 	}
 
@@ -1063,6 +1129,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.maxChannels = maxChannels;
 		ret.channelWaitTimeout = channelWaitTimeout;
 		ret.safeOverwrite = safeOverwrite;
+		ret.runCommands = runCommands;
 
 		return ret;
 	}
@@ -1116,6 +1183,7 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		ret.setProperty(PROP_MAX_CHANNELS, ""+maxChannels);
 		ret.setProperty(PROP_CHANNEL_WAIT_TIMEOUT, us.bringardner.parley.core.util.Durations.format(Math.max(0, channelWaitTimeout)));
 		ret.setProperty(PROP_SAFE_OVERWRITE, ""+safeOverwrite);
+		ret.setProperty(PROP_RUN_COMMANDS, ""+runCommands);
 		if( chunkSizeExplicit ) {
 			ret.setProperty(PROP_BUFFER_SIZE, ""+chunkSize);
 		}
@@ -1230,6 +1298,10 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		String safe = p.getProperty(PROP_SAFE_OVERWRITE);
 		if( safe != null && !safe.trim().isEmpty()) {
 			setSafeOverwrite(Boolean.parseBoolean(safe.trim()));
+		}
+		String run = p.getProperty(PROP_RUN_COMMANDS);
+		if( run != null && !run.trim().isEmpty()) {
+			setRunCommands(Boolean.parseBoolean(run.trim()));
 		}
 		String buffer = p.getProperty(PROP_BUFFER_SIZE);
 		if( buffer != null && !buffer.trim().isEmpty()) {

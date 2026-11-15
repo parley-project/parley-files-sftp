@@ -1823,6 +1823,6 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	@Override
 	public us.bringardner.parley.files.FileSourceCapabilities getCapabilities() {
 		return us.bringardner.parley.files.FileSourceCapabilities.defaults(getLockScope()).withOrderedOperations(true)
-				.withAtomicCreateNewFile(factory.createNewIsAtomic());
+				.withAtomicCreateNewFile(factory.createNewIsAtomic()).withRunsCommands(factory.isRunCommands());
 	}
 }
