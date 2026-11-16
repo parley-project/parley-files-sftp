@@ -82,7 +82,7 @@ and needs nothing but `parley-files-sftp`:
 | Type | What it does |
 |---|---|
 | `SshProvider` | Its name, and `connect(SshSettings)` |
-| `SshConnection` | One logged-in connection: opens `SftpChannel`s, runs commands (`exec`, to the end; `start`, streaming, for `processBuilder`) |
+| `SshConnection` | One logged-in connection: opens `SftpChannel`s, runs commands |
 | `SftpChannel` | The SFTP requests (`stat`, `list`, `rename`, streams, ...); `AbstractSftpChannel` helps with the details |
 | `SftpFile` | An open file read and written at positions |
 | `SshSettings`, `SftpAttributes`, `SftpEntry` | What a provider is given and returns |
@@ -150,25 +150,6 @@ those tests, and the provider's own tests should check that it refuses them with
 | `connectTimeout` | `30s` | How long connect, handshake and login may take, a duration |
 | `serverAliveInterval` | `30s` | The time between keepalives, a duration; 0 turns them off |
 | `attributeCacheTtl` | `2s` | How long a file's details are cached, a duration (-1: until refreshed); see below |
-| `runCommands` | `false` | `true`: programs can be started on the server (see [Running programs](#running-programs)). Needs an account with shell access |
-
-## Running programs
-
-With `runCommands=true`, `processBuilder(command)` (see parley-files'
-[Running programs](https://github.com/parley-project/parley-files#running-programs)) starts programs on the
-server, over an SSH exec channel. It is off by default: running programs is a much bigger permission than
-reaching files, so a connection has to turn it on, and with it off `processBuilder` returns null.
-
-1. **The command line.** The command, directory and environment become one line for the user's shell on
-   the server, every word quoted: `cd 'DIR' && exec env 'NAME=VALUE' 'PROGRAM' 'ARG'` (plus `2>&1` for
-   `redirectErrorStream(true)`). That needs a POSIX-style shell (sh, bash, zsh, ksh); Windows'
-   `cmd.exe` doesn't read it. The program is found on the server's `PATH`.
-2. **The environment** starts empty: its variables are set on top of the one the server gives the program.
-3. **The exit status** is the program's, or 128 plus the signal's number if a signal ended it (JSch doesn't
-   report signals: 255), or 255 if the server sent neither.
-4. **A channel slot.** A running program holds one of the connection's `maxChannels` until it ends.
-5. **Refused.** An account limited to SFTP can't run programs: `start()` throws an `IOException` that says so.
-6. **No terminal yet.** Programs run without a pseudo-terminal, so interactive ones (`vim`, `top`) don't work.
 
 ## Links
 
