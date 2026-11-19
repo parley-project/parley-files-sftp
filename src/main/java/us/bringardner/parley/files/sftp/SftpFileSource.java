@@ -320,6 +320,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	private String path;
 	private SftpFileSourceFactory factory;
 	private Boolean isLink;
+	/** lstat of a symbolic link: the link's own owner and times (D78); only kept for a link */
+	private SftpAttributes linkAttr;
 
 
 	private SftpFileSource parent;
@@ -555,6 +557,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		factory.noteChange();
 		attr = null;
 		exists = null;
+		linkAttr = null;
 	}
 
 	/**
@@ -583,6 +586,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			attr = null;
 			exists = null;
 			isLink = null;
+			linkAttr = null;
 			linkedTo = null;
 			owner = null;
 			group = null;
@@ -636,6 +640,32 @@ public class SftpFileSource extends BaseObject implements FileSource {
 			}
 			throw e;
 		}
+	}
+
+	/**
+	 * The attributes that are the path's own owner, group and times: for a symbolic link
+	 * the link's (lstat), as java.nio's NOFOLLOW_LINKS reads them (D78), otherwise the
+	 * same as {@link #getAttr()}. Permission bits and size stay the target's (getAttr()).
+	 * Null if there's nothing there.
+	 */
+	private synchronized SftpAttributes ownAttr() throws IOException {
+		expireIfStale();
+		if( isLink == null ) {
+			SftpAttributes self = getLinkAttr();
+			startClockIfEmpty();
+			isLink = self != null && self.isLink();
+			if( isLink ) {
+				linkAttr = self;
+			}
+		}
+		if( isLink ) {
+			if( linkAttr == null ) {
+				startClockIfEmpty();
+				linkAttr = getLinkAttr();
+			}
+			return linkAttr;
+		}
+		return getAttr();
 	}
 
 	/**
@@ -1075,11 +1105,9 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 	@Override
 	public synchronized  long lastModified() throws IOException {
-		if( exists()) {
-			return ((long)getAttr().getMTime())*1000l;
-		} else {
-			return 0;
-		}
+		// a symbolic link has its own time, even one that points at nothing (D78)
+		SftpAttributes a = ownAttr();
+		return a == null ? 0 : ((long)a.getMTime())*1000l;
 	}
 
 	@Override
@@ -1588,7 +1616,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	public synchronized FileSourceUser getOwner() throws IOException {
 		expireIfStale();
 		if( owner == null ) {
-			SftpAttributes a = getAttr();
+			SftpAttributes a = ownAttr();   // a link's own owner (D78)
 			if( a == null ) {
 				return new FileSourceUser();
 			}
@@ -1735,7 +1763,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 	@Override
 	public long lastAccessTime() throws IOException {
-		SftpAttributes a = getAttr();
+		SftpAttributes a = ownAttr();   // a link's own time (D78)
 		return a == null ? 0 : a.getATime()*1000L;
 	}
 
