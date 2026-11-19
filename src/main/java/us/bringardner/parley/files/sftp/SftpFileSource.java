@@ -645,7 +645,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	/**
 	 * The attributes that are the path's own owner, group and times: for a symbolic link
 	 * the link's (lstat), as java.nio's NOFOLLOW_LINKS reads them (D78), otherwise the
-	 * same as {@link #getAttr()}. Permission bits and size stay the target's (getAttr()).
+	 * same as {@link #getAttr()}. Whether this user may read, write or run it (hasPermission) is the
+	 * target's (getAttr()), as access(2) has it.
 	 * Null if there's nothing there.
 	 */
 	private synchronized SftpAttributes ownAttr() throws IOException {
@@ -764,7 +765,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	 * doesn't exist (so every permission check answers false).
 	 */
 	private char permissionChar(int idx) throws IOException {
-		SftpAttributes a = getAttr();
+		// the mode bits are lstat's: a symbolic link's own (D78); canRead, canWrite and canExecute follow the link
+		SftpAttributes a = ownAttr();
 		return a == null ? ' ' : a.getPermissionsString().charAt(idx);
 	}
 
@@ -1096,6 +1098,12 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 	@Override
 	public synchronized  long length() throws IOException {
+		// a symbolic link's own length, the length of its text, as lstat has it (D78); reading follows
+		// the link, see contentLength()
+		SftpAttributes own = ownAttr();
+		if( own != null && own.isLink() ) {
+			return own.getSize();
+		}
 		if( exists()) {
 			return getAttr().getSize();
 		} else {

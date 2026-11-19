@@ -75,4 +75,26 @@ public class SftpLinkAttributesTest {
 		assertEquals(connected.lstat(d+"/dangling").getMTime()*1000L, link.lastModified());
 		assertTrue(link.lastModified() > OLD);
 	}
+
+	@Test
+	void linkAnswersItsOwnModeBitsAndLengthButReadingFollowsIt() throws IOException {
+		String d = connected.createFileSource(DIR).getAbsolutePath();
+		FileSource target = connected.createFileSource(d+"/data.txt");
+		SftpRegressionTest.write(target, "0123456789".getBytes());
+		// give the link a text of another length than the file
+		FileSource link = connected.createSymbolicLink(connected.createFileSource(d+"/modes"), target);
+
+		String own = connected.lstat(d+"/modes").getPermissionsString();
+		assertEquals(own.charAt(1) == 'r', link.canOwnerRead(), "the link's own owner read bit");
+		assertEquals(own.charAt(2) == 'w', link.canOwnerWrite());
+		assertEquals(own.charAt(3) == 'x', link.canOwnerExecute());
+		assertEquals(own.charAt(4) == 'r', link.canGroupRead());
+		assertEquals(own.charAt(9) == 'x', link.canOtherExecute());
+
+		assertEquals(connected.lstat(d+"/modes").getSize(), link.length(), "the link's own length");
+		assertNotEquals(10, link.length());
+		assertEquals(10, link.contentLength(), "reading follows the link");
+		assertEquals(10, target.length());
+		assertEquals(2, link.tail(2).length);
+	}
 }
