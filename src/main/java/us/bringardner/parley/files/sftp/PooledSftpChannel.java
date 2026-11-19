@@ -162,6 +162,16 @@ class PooledSftpChannel implements SftpChannel {
 	}
 
 	@Override
+	public boolean canSetLinkAttributes() throws IOException {
+		return call(() -> channel.canSetLinkAttributes());
+	}
+
+	@Override
+	public void setLinkAttributes(String path, Long uid, Long gid, Long accessSeconds, Long modifySeconds) throws IOException {
+		call(() -> { channel.setLinkAttributes(path, uid, gid, accessSeconds, modifySeconds); return null; });
+	}
+
+	@Override
 	public void truncate(String path, long size) throws IOException {
 		call(() -> { channel.truncate(path, size); return null; });
 	}

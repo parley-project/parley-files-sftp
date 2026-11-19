@@ -69,6 +69,30 @@ public interface SftpChannel extends Closeable {
 	/** Seconds since 1970. */
 	void setAccessTime(String path, long seconds) throws IOException;
 
+	/**
+	 * Whether {@link #setLinkAttributes} works with this channel's server: the provider can send, and
+	 * the server announced, OpenSSH's {@code lsetstat@openssh.com} extension. The default says no.
+	 *
+	 * @since 2.0.0
+	 */
+	default boolean canSetLinkAttributes() throws IOException {
+		return false;
+	}
+
+	/**
+	 * Sets the owner, group and times of the symbolic link at 'path' itself, not of what it leads to
+	 * (OpenSSH's {@code lsetstat@openssh.com}; chown -h, touch -h). SFTP version 3 sets the user and
+	 * group ids together, and the two times together, so a pair is sent when either of its two is given
+	 * and the caller says both; a null pair leaves them alone. Times are seconds since 1970.
+	 *
+	 * @throws IOException if the server doesn't offer it (see {@link #canSetLinkAttributes()}) or
+	 * refuses
+	 * @since 2.0.0
+	 */
+	default void setLinkAttributes(String path, Long uid, Long gid, Long accessSeconds, Long modifySeconds) throws IOException {
+		throw new IOException("lsetstat@openssh.com isn't available with this provider");
+	}
+
 	/** Sets the size, cutting the file short or extending it with zeros. */
 	void truncate(String path, long size) throws IOException;
 

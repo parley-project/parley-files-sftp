@@ -1278,10 +1278,48 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		return ret;
 	}
 
+	/**
+	 * Sets the owner or times of a symbolic link itself (D78), with the server's lsetstat@openssh.com.
+	 * SFTP version 3 sets the ids together and the times together, so what isn't asked for is kept from
+	 * the link as it is. False where the server doesn't offer it: the link is left as it was rather
+	 * than changing what it leads to.
+	 *
+	 * @param own the link's lstat
+	 */
+	private synchronized boolean setLinkOwnAttributes(SftpAttributes own, Long uid, Long gid, Long atime, Long mtime) throws IOException {
+		boolean pairIds = uid != null || gid != null;
+		boolean pairTimes = atime != null || mtime != null;
+		boolean done = factory.sftp(c -> {
+			if( !c.canSetLinkAttributes()) {
+				return false;
+			}
+			c.setLinkAttributes(path,
+					pairIds ? Long.valueOf(uid != null ? uid : own.getUId()) : null,
+					pairIds ? Long.valueOf(gid != null ? gid : own.getGId()) : null,
+					pairTimes ? Long.valueOf(atime != null ? atime : own.getATime()) : null,
+					pairTimes ? Long.valueOf(mtime != null ? mtime : own.getMTime()) : null);
+			return true;
+		});
+		factory.noteChange();
+		clearAttr();
+		clearOwner();
+		return done;
+	}
+
+	/** The link's own lstat if this path is a symbolic link, else null. */
+	private SftpAttributes linkOwn() throws IOException {
+		SftpAttributes own = ownAttr();
+		return own != null && own.isLink() ? own : null;
+	}
+
 	@Override
 	public synchronized  boolean setLastModifiedTime(long time) throws IOException {
 		boolean ret = false;
 		int time2 = (int)(time/1000);
+		SftpAttributes link = linkOwn();
+		if( link != null ) {
+			return setLinkOwnAttributes(link, null, null, null, (long) time2) && ownAttr().getMTime() == time2;
+		}
 		try {
 			factory.sftp(c -> { c.setModifiedTime(path, time2); return null; });
 		} catch (NoSuchFileException e) {
@@ -1784,6 +1822,10 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	@Override
 	public boolean setLastAccessTime(long time) throws IOException {
 		int time2 = (int)(time/1000);
+		SftpAttributes link = linkOwn();
+		if( link != null ) {
+			return setLinkOwnAttributes(link, null, null, (long) time2, null) && ownAttr().getATime() == time2;
+		}
 		factory.sftp(c -> { c.setAccessTime(path, time2); return null; });
 		factory.noteChange();
 		attr = null;
@@ -1801,6 +1843,10 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	public boolean setGroup(GroupPrincipal group) throws IOException {
 		if (group instanceof FileSourceGroup) {
 			int gid =  ((FileSourceGroup) group).getId();
+			SftpAttributes link = linkOwn();
+			if( link != null ) {
+				return setLinkOwnAttributes(link, null, (long) gid, null, null);
+			}
 			factory.sftp(c -> { c.chgrp(path, gid); return null; });
 			clearOwner();
 			return true;
@@ -1812,6 +1858,10 @@ public class SftpFileSource extends BaseObject implements FileSource {
 	public boolean setOwner(UserPrincipal owner) throws IOException {
 		if (owner instanceof FileSourceUser) {
 			int uid = ((FileSourceUser) owner).getId();
+			SftpAttributes link = linkOwn();
+			if( link != null ) {
+				return setLinkOwnAttributes(link, (long) uid, null, null, null);
+			}
 			factory.sftp(c -> { c.chown(path, uid); return null; });
 			clearOwner();
 			return true;
