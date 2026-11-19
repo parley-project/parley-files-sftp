@@ -1531,6 +1531,18 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		return isLink ? linkedTo : null;
 	}
 
+	/** What the server's readlink says, as stored: nothing is resolved (getLinkedTo() makes a path of it). */
+	@Override
+	public synchronized String getLinkText() throws IOException {
+		expireIfStale();
+		if( isLink == null ) {
+			SftpAttributes self = getLinkAttr();
+			startClockIfEmpty();
+			isLink = self != null && self.isLink();
+		}
+		return isLink ? factory.readlink(path) : null;
+	}
+
 	@Override
 	public boolean isHidden() {
 		return getName().startsWith(".");

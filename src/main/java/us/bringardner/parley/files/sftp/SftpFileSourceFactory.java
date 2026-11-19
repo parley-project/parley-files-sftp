@@ -1585,6 +1585,20 @@ public class SftpFileSourceFactory extends FileSourceFactory {
 		return newFileLink;
 	}
 
+	/**
+	 * A symbolic link that holds the text as given, relative or absolute, to something that need not exist: the
+	 * text goes to the server unchanged (SSH_FXP_SYMLINK), where the two-file form sends the target's absolute path.
+	 */
+	@Override
+	public FileSource createSymbolicLink(FileSource newFileLink, String linkText) throws IOException {
+		if( linkText == null || linkText.isEmpty() ) {
+			throw new IOException("A symbolic link needs text");
+		}
+		sftp(c -> { c.symlink(linkText, newFileLink.getAbsolutePath()); return null; });
+		newFileLink.refresh();
+		return newFileLink;
+	}
+
 	@Override
 	public FileSource createLink(FileSource newFileLink, FileSource existingFile) throws IOException {
 		sftp(c -> { c.hardlink(existingFile.getAbsolutePath(), newFileLink.getAbsolutePath()); return null; });
