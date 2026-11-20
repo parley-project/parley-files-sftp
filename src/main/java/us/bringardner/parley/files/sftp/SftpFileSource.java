@@ -671,7 +671,7 @@ public class SftpFileSource extends BaseObject implements FileSource {
 
 	/**
 	 * Permission check against the remote user from whoAmI(). Root can read
-	 * and write anything, and execute anything with an execute bit set.
+	 * and write anything, and execute a folder or anything with an execute bit set.
 	 */
 	private boolean hasPermission(int ownerBit) throws IOException {
 		SftpAttributes a = getAttr();
@@ -681,7 +681,8 @@ public class SftpFileSource extends BaseObject implements FileSource {
 		int perm = a.getPermissions();
 		FileSourceUser me = factory.whoAmI();
 		if( me.getId() == 0 ) {
-			return ownerBit != 0100 || (perm & 0111) != 0;
+			// as on Unix (D79): read and write anything; execute a folder, or a file with any execute bit
+			return ownerBit != 0100 || a.isDir() || (perm & 0111) != 0;
 		}
 		if( me.getId() == a.getUId()) {
 			return (perm & ownerBit) != 0;
