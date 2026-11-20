@@ -106,7 +106,11 @@ public class SftpLinkSettersTest {
 			accessed = link.setLastAccessTime(NEW_TIME * 1000);
 		} catch(IOException e) {
 			// the server only answers SSH_FX_FAILURE; do here what it does there, to see what fails
-			throw new AssertionError("the server failed; the same no-follow call here: " + sameCallHere(), e);
+			String here = sameCallHere();
+			// a file system that can't set the times of a link at all (some macOS volumes: "Bad file descriptor")
+			// can't have the server do it either; that is the system's limit, not the provider's
+			org.junit.jupiter.api.Assumptions.assumeTrue(here.endsWith(" worked"), "this file system can't set a link's times: " + here);
+			throw new AssertionError("the server failed, but the same no-follow call here " + here, e);
 		}
 		assertEquals(TARGET_TIME, targetTime(), "what the link leads to is never changed");
 		if( can ) {

@@ -103,6 +103,28 @@ public class SftpFileLikeTest extends FileLikeBehaviorTests {
 		return !TestServer.isEmbeddedMaverick();
 	}
 
+	/**
+	 * A link's mode is the server's own: rwxrwxrwx on Linux, the umask's on macOS (D78). Read it as the
+	 * server reports it, so what is checked is that the link answers its own bits, not the file's.
+	 */
+	@Override
+	protected java.util.Set<java.nio.file.attribute.PosixFilePermission> ownPermissionsOfALink(FileSource link) throws Exception {
+		int mode = factory.lstat(link.getAbsolutePath()).getPermissions();
+		java.util.Set<java.nio.file.attribute.PosixFilePermission> ret = java.util.EnumSet.noneOf(java.nio.file.attribute.PosixFilePermission.class);
+		java.nio.file.attribute.PosixFilePermission[] all = {
+				java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE, java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE,
+				java.nio.file.attribute.PosixFilePermission.OTHERS_READ, java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE,
+				java.nio.file.attribute.PosixFilePermission.GROUP_WRITE, java.nio.file.attribute.PosixFilePermission.GROUP_READ,
+				java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE, java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+				java.nio.file.attribute.PosixFilePermission.OWNER_READ};
+		for(int i = 0; i < all.length; i++) {
+			if( (mode & (1 << i)) != 0 ) {
+				ret.add(all[i]);
+			}
+		}
+		return ret;
+	}
+
 	/** SFTP version 3 stores a modified time as whole seconds. */
 	@Override
 	protected long modifiedTimeResolutionMillis() {

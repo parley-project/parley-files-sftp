@@ -65,9 +65,9 @@ public class SftpLinkTextTest {
 				assertEquals(texts[i], other.createFileSource(path).getLinkText(), "read by another connection");
 			}
 			// the link follows its text: relative text is relative to the link's folder
-			assertEquals(4, connected.createFileSource(d+"/link0").length());
-			assertEquals(4, connected.createFileSource(d+"/link1").length());
-			assertEquals(4, connected.createFileSource(d+"/link2").length());
+			assertEquals(4, connected.createFileSource(d+"/link0").contentLength());
+			assertEquals(4, connected.createFileSource(d+"/link1").contentLength());
+			assertEquals(4, connected.createFileSource(d+"/link2").contentLength());
 			assertTrue(connected.createFileSource(d+"/link3").isDirectory());
 
 			// not links
