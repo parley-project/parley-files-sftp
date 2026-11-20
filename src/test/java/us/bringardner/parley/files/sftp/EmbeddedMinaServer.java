@@ -10,6 +10,8 @@ import java.util.Collections;
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory;
 import org.apache.sshd.common.keyprovider.KeyPairProvider;
 import org.apache.sshd.server.SshServer;
+import org.apache.sshd.server.session.ServerSession;
+import org.apache.sshd.sftp.server.SftpEventListener;
 import org.apache.sshd.sftp.server.SftpSubsystemFactory;
 
 /**
@@ -35,7 +37,18 @@ final class EmbeddedMinaServer {
 			server.setPort(0);
 			server.setKeyPairProvider(KeyPairProvider.wrap(g.generateKeyPair()));
 			server.setPasswordAuthenticator((u, p, session) -> user.equals(u) && password.equals(p));
-			server.setSubsystemFactories(Collections.singletonList(new SftpSubsystemFactory()));
+			SftpSubsystemFactory sftp = new SftpSubsystemFactory();
+			// MINA answers any server-side failure with a bare SSH_FX_FAILURE; say what it was
+			sftp.addSftpEventListener(new SftpEventListener() {
+				@Override
+				public void modifiedAttributes(ServerSession session, java.nio.file.Path path, java.util.Map<String, ?> attrs, Throwable thrown) {
+					if( thrown != null ) {
+						System.err.println("EmbeddedMinaServer: setting " + attrs + " on " + path + " failed: " + thrown);
+						thrown.printStackTrace();
+					}
+				}
+			});
+			server.setSubsystemFactories(Collections.singletonList(sftp));
 			server.setFileSystemFactory(new VirtualFileSystemFactory(home.toPath()));
 			server.start();
 		} catch (Exception e) {
