@@ -78,14 +78,36 @@ public class SftpLinkSettersTest {
 		return Files.getLastModifiedTime(home.resolve("real.txt")).toMillis() / 1000;
 	}
 
+	private static String sameCallHere() {
+		try {
+			Path ln = home.resolve("ln");
+			String r = "home=" + home + " real=" + home.toRealPath();
+			Files.setAttribute(ln, "basic:lastModifiedTime", FileTime.fromMillis(NEW_TIME * 1000), LinkOption.NOFOLLOW_LINKS);
+			Files.setAttribute(ln, "basic:lastAccessTime", FileTime.fromMillis(NEW_TIME * 1000), LinkOption.NOFOLLOW_LINKS);
+			// that worked, so put the link back as the test expects it
+			BasicFileAttributeView v = Files.getFileAttributeView(ln, BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+			v.setTimes(FileTime.fromMillis(LINK_TIME * 1000), FileTime.fromMillis(LINK_TIME * 1000), null);
+			return r + " worked";
+		} catch(Exception e) {
+			return e.toString();
+		}
+	}
+
 	@Test
 	void timesOfALinkAreSetOnTheLinkWhereTheServerCan() throws IOException {
 		boolean can = factory.sftp(c -> c.canSetLinkAttributes());
 		FileSource link = factory.createFileSource("/ln");
 		assertEquals(LINK_TIME * 1000, link.lastModified());
 
-		boolean modified = link.setLastModifiedTime(NEW_TIME * 1000);
-		boolean accessed = link.setLastAccessTime(NEW_TIME * 1000);
+		boolean modified;
+		boolean accessed;
+		try {
+			modified = link.setLastModifiedTime(NEW_TIME * 1000);
+			accessed = link.setLastAccessTime(NEW_TIME * 1000);
+		} catch(IOException e) {
+			// the server only answers SSH_FX_FAILURE; do here what it does there, to see what fails
+			throw new AssertionError("the server failed; the same no-follow call here: " + sameCallHere(), e);
+		}
 		assertEquals(TARGET_TIME, targetTime(), "what the link leads to is never changed");
 		if( can ) {
 			assertTrue(modified);
