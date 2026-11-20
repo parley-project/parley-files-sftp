@@ -103,6 +103,20 @@ public class SftpFileLikeTest extends FileLikeBehaviorTests {
 		return !TestServer.isEmbeddedMaverick();
 	}
 
+	/** A link's own bits are the server's: rwxrwxrwx on Linux, the umask's on macOS (D78). */
+	@Override
+	protected java.util.Set<java.nio.file.attribute.PosixFilePermission> ownPermissionsOfALink(FileSource link) throws Exception {
+		String own = factory.lstat(link.getAbsolutePath()).getPermissionsString();
+		java.util.Set<java.nio.file.attribute.PosixFilePermission> bits = new java.util.HashSet<>();
+		java.nio.file.attribute.PosixFilePermission[] all = java.nio.file.attribute.PosixFilePermission.values();   // OWNER_READ ... OTHERS_EXECUTE
+		for (int i = 0; i < all.length; i++) {
+			if( own.charAt(i+1) != '-' ) {
+				bits.add(all[i]);
+			}
+		}
+		return bits;
+	}
+
 	/** SFTP version 3 stores a modified time as whole seconds. */
 	@Override
 	protected long modifiedTimeResolutionMillis() {

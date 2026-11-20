@@ -64,8 +64,9 @@ public class SftpLinkAttributesTest {
 		assertEquals(connected.lstat(d+"/ln").getMTime()*1000L, link.lastModified());
 		assertEquals(connected.lstat(d+"/ln").getATime()*1000L, link.lastAccessTime());
 		long uid = connected.lstat(d+"/ln").getUId();
+		String name = link.getOwner().getName();   // asks first: the names are known once a folder is listed
 		String expected = connected.userName(uid);
-		assertEquals(expected == null ? ""+uid : expected, link.getOwner().getName());
+		assertEquals(expected == null ? ""+uid : expected, name);
 	}
 
 	@Test
